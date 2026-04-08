@@ -1,59 +1,155 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Backend Laravel Restaurant Manager
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## Mục tiêu tái cấu trúc
 
-## About Laravel
+Code được tái cấu trúc để:
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- Giảm kiến trúc controller-heavy.
+- Tách rõ business logic, data access logic, và HTTP layer.
+- Tăng khả năng mở rộng, test, và bảo trì.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Design Pattern đã áp dụng
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### 1) Service Pattern
 
-## Learning Laravel
+Business logic được đưa vào Service, controller chỉ điều phối request/response.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+Nơi đã áp dụng:
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- `app/Services/AuthService.php`: login, logout, refresh token, Google OAuth, token workflow.
+- `app/Services/AccountService.php`: use-case quản lý nhân viên, cập nhật profile, đổi mật khẩu.
+- `app/Services/GuestService.php`: use-case tạo guest và lấy danh sách guest theo bộ lọc.
 
-## Laravel Sponsors
+Giá trị nhận được:
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+- Controller mỏng (thin controller).
+- Logic trung tâm nằm một chỗ, dễ test theo use-case.
 
-### Premium Partners
+### 2) Repository Pattern (narrow repository)
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+Data access được tách qua interface + implementation cụ thể theo use-case, không dùng generic repository quá lớn.
 
-## Contributing
+Nơi đã áp dụng:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+- `app/Repositories/Contracts/AuthRepositoryInterface.php`
+- `app/Repositories/AuthRepository.php`
+- `app/Repositories/Contracts/AccountRepositoryInterface.php`
+- `app/Repositories/AccountRepository.php`
+- `app/Repositories/Contracts/GuestRepositoryInterface.php`
+- `app/Repositories/GuestRepository.php`
 
-## Code of Conduct
+Giá trị nhận được:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+- Service không phụ thuộc trực tiếp Eloquent query.
+- Dễ thay đổi chiến lược truy vấn mà không sửa service/controller.
 
-## Security Vulnerabilities
+### 3) Dependency Injection + IoC Container
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Các abstraction được bind vào implementation trong container.
 
-## License
+Nơi đã áp dụng:
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+- `app/Providers/AppServiceProvider.php`
+
+Bindings:
+
+- `AuthRepositoryInterface -> AuthRepository`
+- `AccountRepositoryInterface -> AccountRepository`
+- `GuestRepositoryInterface -> GuestRepository`
+
+Giá trị nhận được:
+
+- Controller/Service phụ thuộc abstraction thay vì concrete.
+- Tăng khả năng mock khi unit test.
+
+### 4) Exception-based Service Flow
+
+Service throw domain/service exception, controller map exception thành response HTTP đồng nhất.
+
+Nơi đã áp dụng:
+
+- `app/Exceptions/AuthServiceException.php`
+- `app/Exceptions/ServiceException.php`
+- `app/Http/Controllers/AuthController.php`
+- `app/Http/Controllers/AccountController.php`
+
+Giá trị nhận được:
+
+- Giảm logic if/else trả lỗi trong controller.
+- Error shape ổn định, dễ frontend xử lý.
+
+## SOLID đang tuân thủ và vị trí cụ thể
+
+### S - Single Responsibility Principle (SRP)
+
+Mỗi class có 1 lý do thay đổi rõ ràng:
+
+- Controller: xử lý HTTP layer (request/response).
+- Service: xử lý business rule/use-case.
+- Repository: xử lý query/persistence.
+- Exception class: chuẩn hóa lỗi service.
+
+Vị trí:
+
+- `app/Http/Controllers/AuthController.php`
+- `app/Http/Controllers/AccountController.php`
+- `app/Services/*.php`
+- `app/Repositories/*.php`
+
+### O - Open/Closed Principle (OCP)
+
+Hệ thống mở rộng bằng cách thêm implementation mới mà không cần sửa nhiều code hiện có.
+
+Ví dụ:
+
+- Có thể thêm `CachedAccountRepository` hoặc `ExternalAuthRepository` implement cùng interface.
+- Service và controller vẫn giữ nguyên vì làm việc qua abstraction.
+
+Vị trí:
+
+- `app/Repositories/Contracts/*.php`
+- `app/Providers/AppServiceProvider.php`
+
+### L - Liskov Substitution Principle (LSP)
+
+Mọi implementation repository có thể thay thế cho interface mà không phá vỡ hợp đồng hành vi mong đợi.
+
+Vị trí:
+
+- `AuthRepository` thay thế `AuthRepositoryInterface`
+- `AccountRepository` thay thế `AccountRepositoryInterface`
+- `GuestRepository` thay thế `GuestRepositoryInterface`
+
+### I - Interface Segregation Principle (ISP)
+
+Interface được chia nhỏ theo domain/use-case, không bắt class phải implement method không dùng.
+
+Vị trí:
+
+- `AuthRepositoryInterface` chỉ chứa method liên quan auth token/account email.
+- `AccountRepositoryInterface` chỉ chứa method cho account lifecycle.
+- `GuestRepositoryInterface` chỉ chứa method cho guest/table query.
+
+### D - Dependency Inversion Principle (DIP)
+
+Tầng cao (Service, Controller) phụ thuộc abstraction thay vì concrete.
+
+Vị trí:
+
+- `AuthService` phụ thuộc `AuthRepositoryInterface`.
+- `AccountService` phụ thuộc `AccountRepositoryInterface`.
+- `GuestService` phụ thuộc `GuestRepositoryInterface`.
+- Container bind abstraction -> concrete trong `AppServiceProvider`.
+
+## Kết quả kiến trúc hiện tại
+
+- Controller đã mỏng và dễ đọc hơn.
+- Luồng nghiệp vụ tập trung trong Service.
+- Truy cập data được đóng gói trong Repository.
+- Cấu trúc sẵn sàng cho unit test theo từng lớp.
+
+## Hướng tiếp theo để hoàn thiện
+
+- Bổ sung unit test cho `AuthService`, `AccountService`, `GuestService`.
+- Bổ sung feature test cho auth/account endpoints.
+- Cân nhắc thêm API Resources để chuẩn hóa output schema.
