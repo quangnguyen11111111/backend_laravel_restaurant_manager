@@ -35,7 +35,8 @@ class AuthController extends Controller
                 'message' => 'Email không tồn tại',
                 'errors' => [
                     ['field' => 'email', 'message' => 'Email không tồn tại']
-                ]
+                ],
+                'statusCode' => 422,
             ], 422);
         }
 
@@ -44,7 +45,8 @@ class AuthController extends Controller
                 'message' => 'Email hoặc mật khẩu không đúng',
                 'errors' => [
                     ['field' => 'password', 'message' => 'Email hoặc mật khẩu không đúng']
-                ]
+                ],
+                'statusCode' => 422,
             ], 422);
         }
 
