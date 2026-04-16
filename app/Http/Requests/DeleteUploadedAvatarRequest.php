@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 
-class RefreshTokenRequest extends BaseApiRequest
+class DeleteUploadedAvatarRequest extends BaseApiRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,7 +22,7 @@ class RefreshTokenRequest extends BaseApiRequest
     public function rules(): array
     {
         return [
-            'refreshToken' => ['required', 'string'],
+            'avatarS3Key' => ['required', 'string', 'max:512'],
         ];
     }
 
@@ -32,7 +32,9 @@ class RefreshTokenRequest extends BaseApiRequest
     public function messages(): array
     {
         return [
-            'refreshToken.required' => 'Refresh token là bắt buộc',
+            'avatarS3Key.required' => 'Thiếu khóa ảnh S3 cần xóa',
+            'avatarS3Key.string' => 'Khóa ảnh S3 không hợp lệ',
+            'avatarS3Key.max' => 'Khóa ảnh S3 không hợp lệ',
         ];
     }
 }

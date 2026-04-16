@@ -3,11 +3,8 @@
 namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
-use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Http\Exceptions\HttpResponseException;
-use Illuminate\Contracts\Validation\Validator;
 
-class LoginRequest extends FormRequest
+class LoginRequest extends BaseApiRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -44,15 +41,4 @@ class LoginRequest extends FormRequest
         ];
     }
 
-    /**
-     * Handle a failed validation attempt.
-     * Override to always return JSON response.
-     */
-    protected function failedValidation(Validator $validator): void
-    {
-        throw new HttpResponseException(response()->json([
-            'message' => 'Dữ liệu không hợp lệ',
-            'errors' => $validator->errors(),
-        ], 422));
-    }
 }

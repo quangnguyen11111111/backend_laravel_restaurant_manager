@@ -16,6 +16,7 @@ class Account extends Authenticatable
         'email',
         'password',
         'avatar',
+        'avatar_s3_key',
         'role',
         'owner_id',
     ];

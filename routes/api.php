@@ -48,6 +48,8 @@ Route::prefix('accounts')->middleware('jwt.auth')->group(function () {
     // Routes chỉ cần đăng nhập
     Route::get('/me', [AccountController::class, 'me']);
     Route::put('/me', [AccountController::class, 'updateMe']);
+    Route::post('/me/avatar', [AccountController::class, 'uploadAvatar']);
+    Route::delete('/me/avatar', [AccountController::class, 'deleteUploadedAvatar']);
     Route::put('/change-password', [AccountController::class, 'changePassword']);
 
     // Routes cho Owner hoặc Employee

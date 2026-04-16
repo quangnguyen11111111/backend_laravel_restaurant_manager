@@ -6,13 +6,16 @@ use App\Exceptions\ServiceException;
 use App\Http\Requests\ChangePasswordRequest;
 use App\Http\Requests\CreateEmployeeRequest;
 use App\Http\Requests\CreateGuestRequest;
+use App\Http\Requests\DeleteUploadedAvatarRequest;
 use App\Http\Requests\GetGuestListRequest;
+use App\Http\Requests\UpdateAvatarRequest;
 use App\Http\Requests\UpdateEmployeeRequest;
 use App\Http\Requests\UpdateMeRequest;
 use App\Models\Account;
 use App\Services\AccountService;
 use App\Services\GuestService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
 
 class AccountController extends Controller
@@ -102,6 +105,47 @@ class AccountController extends Controller
         $result = $this->accountService->updateMe($request->user(), $request->validated());
 
         return response()->json($result);
+    }
+
+    /**
+     * POST /accounts/me/avatar
+     * Upload ảnh đại diện tạm thời
+     */
+    public function uploadAvatar(UpdateAvatarRequest $request): JsonResponse
+    {
+        try {
+            $image = $request->file('image');
+
+            if (!$image instanceof UploadedFile) {
+                throw new ServiceException('Ảnh đại diện không hợp lệ', 422, [
+                    ['field' => 'image', 'message' => 'Ảnh đại diện không hợp lệ'],
+                ]);
+            }
+
+            $result = $this->accountService->uploadAvatar($request->user(), $image);
+
+            return response()->json($result);
+        } catch (ServiceException $exception) {
+            return $this->jsonErrorResponse($exception);
+        }
+    }
+
+    /**
+     * DELETE /accounts/me/avatar
+     * Xóa ảnh tạm nếu người dùng hủy cập nhật
+     */
+    public function deleteUploadedAvatar(DeleteUploadedAvatarRequest $request): JsonResponse
+    {
+        try {
+            $result = $this->accountService->deleteUploadedAvatar(
+                $request->user(),
+                $request->validated('avatarS3Key')
+            );
+
+            return response()->json($result);
+        } catch (ServiceException $exception) {
+            return $this->jsonErrorResponse($exception);
+        }
     }
 
     /**

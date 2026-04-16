@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 
-class RefreshTokenRequest extends BaseApiRequest
+class UpdateAvatarRequest extends BaseApiRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,7 +22,7 @@ class RefreshTokenRequest extends BaseApiRequest
     public function rules(): array
     {
         return [
-            'refreshToken' => ['required', 'string'],
+            'image' => ['required', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
         ];
     }
 
@@ -32,7 +32,10 @@ class RefreshTokenRequest extends BaseApiRequest
     public function messages(): array
     {
         return [
-            'refreshToken.required' => 'Refresh token là bắt buộc',
+            'image.required' => 'Ảnh đại diện là bắt buộc',
+            'image.image' => 'File tải lên phải là hình ảnh',
+            'image.mimes' => 'Ảnh chỉ hỗ trợ định dạng jpeg, jpg, png, webp',
+            'image.max' => 'Kích thước ảnh tối đa là 2MB',
         ];
     }
 }
