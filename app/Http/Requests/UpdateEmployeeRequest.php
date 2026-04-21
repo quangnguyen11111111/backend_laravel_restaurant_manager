@@ -30,6 +30,8 @@ class UpdateEmployeeRequest extends BaseApiRequest
             'avatar' => ['nullable', 'url'],
             'changePassword' => ['nullable', 'boolean'],
             'role' => ['nullable', Rule::in(['Owner', 'Employee'])],
+            'avatarS3Key' => ['nullable', 'string', 'max:512', 'required_with:avatar'],
+            'userIdOfUploader' => ['nullable', 'integer', 'required_with:avatarS3Key'],
         ];
 
         // Conditional validation for password when changePassword is true
@@ -63,6 +65,11 @@ class UpdateEmployeeRequest extends BaseApiRequest
             'confirmPassword.required' => 'Hãy nhập mật khẩu mới và xác nhận mật khẩu mới',
             'confirmPassword.same' => 'Mật khẩu không khớp',
             'role.in' => 'Role không hợp lệ',
+            'avatar.required_with' => 'Avatar là bắt buộc khi gửi khóa ảnh S3',
+            'avatarS3Key.required_with' => 'Khóa ảnh S3 là bắt buộc khi gửi avatar',
+            'avatarS3Key.string' => 'Khóa ảnh S3 không hợp lệ',
+            'avatarS3Key.max' => 'Khóa ảnh S3 không hợp lệ',
+            'userIdOfUploader.required_with' => 'ID người gửi ảnh là bắt buộc khi gửi khóa ảnh S3',
         ];
     }
 }

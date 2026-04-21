@@ -25,9 +25,10 @@ class CreateEmployeeRequest extends BaseApiRequest
         return [
             'name' => ['required', 'string', 'min:2', 'max:256'],
             'email' => ['required', 'email', Rule::unique('accounts', 'email')],
-            'avatar' => ['nullable', 'url'],
+            'avatar' => ['nullable', 'url', 'required_with:avatarS3Key'],
             'password' => ['required', 'string', 'min:6', 'max:100'],
             'confirmPassword' => ['required', 'string', 'same:password'],
+             'avatarS3Key' => ['nullable', 'string', 'max:512', 'required_with:avatar'],
         ];
     }
 
@@ -49,6 +50,10 @@ class CreateEmployeeRequest extends BaseApiRequest
             'password.max' => 'Mật khẩu không được vượt quá 100 ký tự',
             'confirmPassword.required' => 'Xác nhận mật khẩu là bắt buộc',
             'confirmPassword.same' => 'Mật khẩu không khớp',
+            'avatar.required_with' => 'Avatar là bắt buộc khi gửi khóa ảnh S3',
+            'avatarS3Key.required_with' => 'Khóa ảnh S3 là bắt buộc khi gửi avatar',
+            'avatarS3Key.string' => 'Khóa ảnh S3 không hợp lệ',
+            'avatarS3Key.max' => 'Khóa ảnh S3 không hợp lệ',
         ];
     }
 }

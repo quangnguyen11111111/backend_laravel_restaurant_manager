@@ -102,14 +102,13 @@ class AuthService
         $newRefreshToken = $this->signRefreshToken(
             $account->id,
             $account->role,
-            $decodedRefreshToken->exp
         );
-
+        $decodedRefreshTokenNew = $this->verifyRefreshToken($newRefreshToken);
         $this->authRepository->deleteRefreshToken($refreshToken);
         $this->authRepository->createRefreshToken(
             $newRefreshToken,
             $account->id,
-            $refreshTokenDoc->expires_at->format('Y-m-d H:i:s')
+            date('Y-m-d H:i:s', $decodedRefreshTokenNew->exp)
         );
 
         return [

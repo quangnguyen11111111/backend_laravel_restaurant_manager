@@ -153,3 +153,10 @@ Vị trí:
 - Bổ sung unit test cho `AuthService`, `AccountService`, `GuestService`.
 - Bổ sung feature test cho auth/account endpoints.
 - Cân nhắc thêm API Resources để chuẩn hóa output schema.
+
+Lệnh tạo migration
+php artisan migrate
+Lệnh tạo seeder
+php artisan db:seed
+Lệnh chạy server
+php artisan serve

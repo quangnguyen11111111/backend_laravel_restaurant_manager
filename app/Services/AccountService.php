@@ -12,6 +12,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use InvalidArgumentException;
 use Throwable;
+use Illuminate\Support\Facades\DB;
 
 class AccountService
 {
@@ -19,8 +20,7 @@ class AccountService
         private readonly AccountRepositoryInterface $accountRepository,
         private readonly PendingImageWorkflowServiceInterface $pendingImageWorkflowService,
         private readonly ImageStorageServiceInterface $imageStorageService
-    ) {
-    }
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -29,7 +29,7 @@ class AccountService
     {
         $accounts = $this->accountRepository
             ->getAllOrderByCreatedAtDesc()
-            ->map(fn (Account $account): array => $this->mapAccount($account));
+            ->map(fn(Account $account): array => $this->mapAccount($account));
 
         return [
             'data' => $accounts,
@@ -43,18 +43,43 @@ class AccountService
      */
     public function store(array $validated): array
     {
-        $account = $this->accountRepository->create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'avatar' => $validated['avatar'] ?? null,
-            'role' => Account::ROLE_EMPLOYEE,
-        ]);
+        return DB::transaction(function () use ($validated) {
 
-        return [
-            'data' => $this->mapAccount($account),
-            'message' => 'Tạo tài khoản thành công',
-        ];
+            $hasNewAvatar = !empty($validated['avatarS3Key']);
+
+            // 1. Tạo account trước
+            $account = $this->accountRepository->create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+                'avatar' => null,
+                'avatar_s3_key' => null,
+                'role' => Account::ROLE_EMPLOYEE,
+            ]);
+
+            if ($hasNewAvatar) {
+                $finalizedAvatar = $this->handleAvatar(
+                    (string) $validated['avatarS3Key'],
+                    $account->id
+                );
+
+
+                $updated = $this->accountRepository->update($account, [
+                    'avatar' => $finalizedAvatar['url'],
+                    'avatar_s3_key' => $finalizedAvatar['key'],
+                ]);
+
+                if (!$updated) {
+                    $this->safeDeleteImage((string) $finalizedAvatar['key']);
+                    throw new ServiceException('Không thể cập nhật avatar.', 500);
+                }
+            }
+
+            return [
+                'data' => $this->mapAccount($account),
+                'message' => 'Tạo tài khoản thành công',
+            ];
+        });
     }
 
     /**
@@ -87,19 +112,65 @@ class AccountService
                 ]
             );
         }
+        $hasNewAvatar = !empty($validated['avatarS3Key']);
+        $oldName = $account->name;
+        $newAvatarUrl = $account->avatar;
+        $newAvatarS3Key = $account->avatar_s3_key;
+        $oldAvatarUrl = $account->avatar;
+        $oldAvatarS3Key = $account->avatar_s3_key;
+        // mã của người gửi ảnh
+        $userIdOfUploader = $validated['userIdOfUploader'];
+        // Xử lý avatar nếu có
+        if ($hasNewAvatar) {
+            $finalizedAvatar = $this->handleAvatar(
+                (string) $validated['avatarS3Key'],
+                $userIdOfUploader
+            );
 
+            $newAvatarUrl = $finalizedAvatar['url'];
+            $newAvatarS3Key = $finalizedAvatar['key'];
+        }
+        //Chuẩn bị data update
         $updateData = [
             'name' => $validated['name'],
             'email' => $validated['email'],
-            'avatar' => $validated['avatar'] ?? $account->avatar,
+            'avatar' => $newAvatarUrl,
+            'avatar_s3_key' => $newAvatarS3Key,
             'role' => $validated['role'] ?? $account->role,
         ];
 
         if (!empty($validated['changePassword']) && !empty($validated['password'])) {
             $updateData['password'] = Hash::make($validated['password']);
         }
+        //Update DB
+        $updated = $this->accountRepository->update($account, $updateData);
+        if (!$updated) {
+            if ($hasNewAvatar) {
+                $this->safeDeleteImage((string) $newAvatarS3Key);
+            }
 
-        $this->accountRepository->update($account, $updateData);
+            throw new ServiceException('Không thể cập nhật tài khoản.', 500);
+        }
+        //  Xóa ảnh cũ nếu có avatar mới
+        if ($hasNewAvatar && $oldAvatarS3Key && $oldAvatarS3Key !== $newAvatarS3Key) {
+            try {
+                $this->imageStorageService->deleteImage($oldAvatarS3Key);
+            } catch (Throwable $exception) {
+                report($exception);
+
+                // rollback DB
+                $this->accountRepository->update($account, [
+                    'name' => $oldName,
+                    'avatar' => $oldAvatarUrl,
+                    'avatar_s3_key' => $oldAvatarS3Key,
+                ]);
+
+                // xóa ảnh mới
+                $this->safeDeleteImage((string) $newAvatarS3Key);
+
+                throw new ServiceException('Không thể xóa ảnh cũ, thao tác đã được hoàn tác.', 500);
+            }
+        }
 
         return [
             'data' => $this->mapAccount($account),
@@ -147,39 +218,18 @@ class AccountService
         $oldAvatarUrl = $account->avatar;
         $oldAvatarS3Key = $account->avatar_s3_key;
 
+        //Xử lý avatar nếu có
         if ($hasNewAvatar) {
-            $avatarS3Key = (string) $validated['avatarS3Key'];
-
-            if (!$this->pendingImageWorkflowService->isPendingKeyOwnedBy(
-                $avatarS3Key,
-                ImageScope::ACCOUNT_AVATAR,
+            $finalizedAvatar = $this->handleAvatar(
+                (string) $validated['avatarS3Key'],
                 $account->id
-            )) {
-                throw new ServiceException('Ảnh tải lên không hợp lệ hoặc đã hết phiên.', 422, [
-                    ['field' => 'avatarS3Key', 'message' => 'Ảnh tải lên không hợp lệ hoặc đã hết phiên.'],
-                ]);
-            }
-
-            try {
-                $finalizedAvatar = $this->pendingImageWorkflowService->finalizePendingImage(
-                    $avatarS3Key,
-                    ImageScope::ACCOUNT_AVATAR,
-                    $account->id
-                );
-            } catch (InvalidArgumentException) {
-                throw new ServiceException('Ảnh tải lên không hợp lệ hoặc đã hết phiên.', 422, [
-                    ['field' => 'avatarS3Key', 'message' => 'Ảnh tải lên không hợp lệ hoặc đã hết phiên.'],
-                ]);
-            } catch (Throwable $exception) {
-                report($exception);
-
-                throw new ServiceException('Không thể xác nhận ảnh tải lên.', 500);
-            }
+            );
 
             $newAvatarUrl = $finalizedAvatar['url'];
             $newAvatarS3Key = $finalizedAvatar['key'];
         }
 
+        //Update DB
         $updated = $this->accountRepository->update($account, [
             'name' => $validated['name'],
             'avatar' => $newAvatarUrl,
@@ -193,7 +243,7 @@ class AccountService
 
             throw new ServiceException('Không thể cập nhật thông tin.', 500);
         }
-
+        // Xóa ảnh cũ (nếu có avatar mới)
         if ($hasNewAvatar && $oldAvatarS3Key && $oldAvatarS3Key !== $newAvatarS3Key) {
             try {
                 $this->imageStorageService->deleteImage($oldAvatarS3Key);
@@ -205,7 +255,7 @@ class AccountService
                     'avatar' => $oldAvatarUrl,
                     'avatar_s3_key' => $oldAvatarS3Key,
                 ]);
-
+                // xóa ảnh mới
                 $this->safeDeleteImage((string) $newAvatarS3Key);
 
                 throw new ServiceException('Không thể xóa ảnh cũ, thao tác đã được hoàn tác.', 500);
@@ -332,6 +382,32 @@ class AccountService
             $this->imageStorageService->deleteImage($avatarS3Key);
         } catch (Throwable) {
             // Best-effort cleanup for failed update/rollback.
+        }
+    }
+    private function handleAvatar(string $avatarS3Key, int $accountId): array
+    {
+        // Check ownership
+        if (!$this->pendingImageWorkflowService->isPendingKeyOwnedBy(
+            $avatarS3Key,
+            ImageScope::ACCOUNT_AVATAR,
+            $accountId
+        )) {
+            throw new ServiceException('Ảnh tải lên không hợp lệ hoặc đã hết phiên.', 422, [
+                ['field' => 'avatarS3Key', 'message' => 'Ảnh tải lên không hợp lệ hoặc đã hết phiên.'],
+            ]);
+        }
+
+        try {
+            return $this->pendingImageWorkflowService->finalizePendingImage(
+                $avatarS3Key,
+                ImageScope::ACCOUNT_AVATAR,
+                $accountId
+            );
+        } catch (InvalidArgumentException) {
+            throw new ServiceException('Ảnh tải lên không hợp lệ hoặc đã hết phiên.', 422);
+        } catch (Throwable $exception) {
+            report($exception);
+            throw new ServiceException('Không thể xác nhận ảnh tải lên.', 500);
         }
     }
 }

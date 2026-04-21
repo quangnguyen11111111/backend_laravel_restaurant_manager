@@ -21,11 +21,7 @@ Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::get('/login/google', [AuthController::class, 'loginGoogle']);
     Route::post('/refresh-token', [AuthController::class, 'refreshToken']);
-
-    // Protected routes (cần đăng nhập)
-    Route::middleware('jwt.auth')->group(function () {
-        Route::post('/logout', [AuthController::class, 'logout']);
-    });
+    Route::post('/logout', [AuthController::class, 'logout']);
 });
 
 /*

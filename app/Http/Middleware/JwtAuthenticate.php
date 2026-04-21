@@ -9,7 +9,7 @@ use Firebase\JWT\Key;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Exception;
-
+use Firebase\JWT\ExpiredException;
 class JwtAuthenticate
 {
     /**
@@ -56,7 +56,13 @@ class JwtAuthenticate
             // Also set decoded token for reference
             $request->attributes->set('decodedAccessToken', $decoded);
 
-        } catch (Exception $e) {
+        }
+         catch (ExpiredException $e) {
+    return response()->json([
+        'message' => 'Access token đã hết hạn',
+        'code' => 'TOKEN_EXPIRED'
+    ], 401);}
+        catch (Exception $e) {
             return response()->json([
                 'message' => 'Access token không hợp lệ'
             ], 401);

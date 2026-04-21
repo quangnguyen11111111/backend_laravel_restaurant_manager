@@ -23,8 +23,7 @@ class AccountController extends Controller
     public function __construct(
         private readonly AccountService $accountService,
         private readonly GuestService $guestService
-    ) {
-    }
+    ) {}
 
     /**
      * GET /accounts
@@ -43,9 +42,12 @@ class AccountController extends Controller
      */
     public function store(CreateEmployeeRequest $request): JsonResponse
     {
-        $result = $this->accountService->store($request->validated());
-
-        return response()->json($result);
+        try {
+            $result = $this->accountService->store($request->validated());
+            return response()->json($result);
+        } catch (ServiceException $exception) {
+            return $this->jsonErrorResponse($exception);
+        }
     }
 
     /**
@@ -102,9 +104,13 @@ class AccountController extends Controller
      */
     public function updateMe(UpdateMeRequest $request): JsonResponse
     {
-        $result = $this->accountService->updateMe($request->user(), $request->validated());
+        try {
+            $result = $this->accountService->updateMe($request->user(), $request->validated());
 
-        return response()->json($result);
+            return response()->json($result);
+        } catch (ServiceException $exception) {
+            return $this->jsonErrorResponse($exception);
+        }
     }
 
     /**
