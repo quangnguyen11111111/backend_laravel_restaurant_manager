@@ -28,7 +28,8 @@ class CreateEmployeeRequest extends BaseApiRequest
             'avatar' => ['nullable', 'url', 'required_with:avatarS3Key'],
             'password' => ['required', 'string', 'min:6', 'max:100'],
             'confirmPassword' => ['required', 'string', 'same:password'],
-             'avatarS3Key' => ['nullable', 'string', 'max:512', 'required_with:avatar'],
+            'avatarS3Key' => ['nullable', 'string', 'max:512', 'required_with:avatar'],
+            'userIdOfUploader' => ['nullable', 'integer', 'required_with:avatarS3Key'],
         ];
     }
 
@@ -54,6 +55,7 @@ class CreateEmployeeRequest extends BaseApiRequest
             'avatarS3Key.required_with' => 'Khóa ảnh S3 là bắt buộc khi gửi avatar',
             'avatarS3Key.string' => 'Khóa ảnh S3 không hợp lệ',
             'avatarS3Key.max' => 'Khóa ảnh S3 không hợp lệ',
+            'userIdOfUploader.required_with' => 'ID người gửi ảnh là bắt buộc khi gửi khóa ảnh S3',
         ];
     }
 }

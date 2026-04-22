@@ -65,11 +65,14 @@ class S3ImageStorageService implements ImageStorageServiceInterface
 
     public function url(string $key): string
     {
-        return Storage::disk(self::DISK)->url($key);
+        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
+        $disk = Storage::disk(self::DISK);
+        return $disk->url($key);
     }
 
     public function exists(string $key): bool
     {
-        return Storage::disk(self::DISK)->exists($key);
+        $disk = Storage::disk(self::DISK);
+        return $disk->exists($key);
     }
 }

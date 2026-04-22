@@ -58,9 +58,10 @@ class AccountService
             ]);
 
             if ($hasNewAvatar) {
+                  $userIdOfUploader = $validated['userIdOfUploader'];
                 $finalizedAvatar = $this->handleAvatar(
                     (string) $validated['avatarS3Key'],
-                    $account->id
+                    $userIdOfUploader
                 );
 
 
@@ -118,10 +119,11 @@ class AccountService
         $newAvatarS3Key = $account->avatar_s3_key;
         $oldAvatarUrl = $account->avatar;
         $oldAvatarS3Key = $account->avatar_s3_key;
-        // mã của người gửi ảnh
-        $userIdOfUploader = $validated['userIdOfUploader'];
+
         // Xử lý avatar nếu có
         if ($hasNewAvatar) {
+            // mã của người gửi ảnh
+            $userIdOfUploader = $validated['userIdOfUploader'];
             $finalizedAvatar = $this->handleAvatar(
                 (string) $validated['avatarS3Key'],
                 $userIdOfUploader
@@ -186,7 +188,24 @@ class AccountService
         $account = $this->accountRepository->findByIdOrFail($id);
         $accountData = $this->mapAccount($account);
 
-        $this->accountRepository->delete($account);
+        $avatarS3Key = $account->avatar_s3_key;
+
+        if (!empty($avatarS3Key)) {
+            try {
+                $this->imageStorageService->deleteImage((string) $avatarS3Key);
+            } catch (Throwable $exception) {
+                report($exception);
+
+                throw new ServiceException('Không thể xóa ảnh đại diện trên S3.', 500);
+            }
+        }
+
+        $deleted = $this->accountRepository->delete($account);
+
+        if (!$deleted) {
+            throw new ServiceException('Không thể xóa tài khoản.', 500);
+        }
+
 
         return [
             'data' => $accountData,
