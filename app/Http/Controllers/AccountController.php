@@ -29,9 +29,9 @@ class AccountController extends Controller
      * GET /accounts
      * Lấy danh sách tất cả tài khoản
      */
-    public function index(): JsonResponse
+    public function index(GetGuestListRequest $request): JsonResponse
     {
-        $result = $this->accountService->index();
+        $result = $this->accountService->index($request->validated());
 
         return response()->json($result);
     }

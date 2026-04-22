@@ -19,6 +19,7 @@ Nơi đã áp dụng:
 - `app/Services/AuthService.php`: login, logout, refresh token, Google OAuth, token workflow.
 - `app/Services/AccountService.php`: use-case quản lý nhân viên, cập nhật profile, đổi mật khẩu.
 - `app/Services/GuestService.php`: use-case tạo guest và lấy danh sách guest theo bộ lọc.
+- `app/Services/DishService.php`: use-case CRUD món ăn, giữ nguyên logic từ Node.js.
 
 Giá trị nhận được:
 
@@ -37,6 +38,8 @@ Nơi đã áp dụng:
 - `app/Repositories/AccountRepository.php`
 - `app/Repositories/Contracts/GuestRepositoryInterface.php`
 - `app/Repositories/GuestRepository.php`
+- `app/Repositories/Contracts/DishRepositoryInterface.php`
+- `app/Repositories/DishRepository.php`
 
 Giá trị nhận được:
 
@@ -56,6 +59,7 @@ Bindings:
 - `AuthRepositoryInterface -> AuthRepository`
 - `AccountRepositoryInterface -> AccountRepository`
 - `GuestRepositoryInterface -> GuestRepository`
+- `DishRepositoryInterface -> DishRepository`
 
 Giá trị nhận được:
 
@@ -72,6 +76,7 @@ Nơi đã áp dụng:
 - `app/Exceptions/ServiceException.php`
 - `app/Http/Controllers/AuthController.php`
 - `app/Http/Controllers/AccountController.php`
+- `app/Http/Controllers/DishController.php`
 
 Giá trị nhận được:
 
@@ -93,6 +98,7 @@ Vị trí:
 
 - `app/Http/Controllers/AuthController.php`
 - `app/Http/Controllers/AccountController.php`
+- `app/Http/Controllers/DishController.php`
 - `app/Services/*.php`
 - `app/Repositories/*.php`
 
@@ -119,6 +125,7 @@ Vị trí:
 - `AuthRepository` thay thế `AuthRepositoryInterface`
 - `AccountRepository` thay thế `AccountRepositoryInterface`
 - `GuestRepository` thay thế `GuestRepositoryInterface`
+- `DishRepository` thay thế `DishRepositoryInterface`
 
 ### I - Interface Segregation Principle (ISP)
 
@@ -129,6 +136,7 @@ Vị trí:
 - `AuthRepositoryInterface` chỉ chứa method liên quan auth token/account email.
 - `AccountRepositoryInterface` chỉ chứa method cho account lifecycle.
 - `GuestRepositoryInterface` chỉ chứa method cho guest/table query.
+- `DishRepositoryInterface` chỉ chứa method cho truy vấn/CRUD món ăn.
 
 ### D - Dependency Inversion Principle (DIP)
 
@@ -139,7 +147,123 @@ Vị trí:
 - `AuthService` phụ thuộc `AuthRepositoryInterface`.
 - `AccountService` phụ thuộc `AccountRepositoryInterface`.
 - `GuestService` phụ thuộc `GuestRepositoryInterface`.
+- `DishService` phụ thuộc `DishRepositoryInterface`.
 - Container bind abstraction -> concrete trong `AppServiceProvider`.
+
+## Hướng dẫn chuyển giao từ Node.js + SQLite sang Laravel
+
+Mục tiêu: giữ nguyên API path, giữ nguyên logic xử lý, và tái cấu trúc theo SOLID.
+
+### 1) Khóa cứng API contract trước khi migrate
+
+Từ dự án Node (`NextJs-Super-BackEnd-main`), lập bảng contract cho từng API gồm:
+
+- HTTP method + path (ví dụ: `GET /dishes`, `POST /dishes`, `PUT /dishes/:id`).
+- Auth rule (public hay yêu cầu đăng nhập/quyền).
+- Validation rule của params/body/query.
+- Response shape thành công/lỗi (bao gồm `message`, `data`, `errors`, `statusCode`).
+
+Khi chuyển sang Laravel, implementation có thể đổi kiến trúc nhưng contract không đổi.
+
+### 2) Chuyển schema SQLite (Prisma) sang migration Laravel
+
+Map trực tiếp model Prisma sang migration Laravel theo nguyên tắc:
+
+- Tên bảng và cột giữ tương thích tối đa.
+- Giá trị enum/default giữ nguyên.
+- Quan hệ FK giữ hành vi onDelete/onUpdate như cũ.
+
+Ví dụ module Dish đã chuyển:
+
+- Prisma `Dish` -> migration `database/migrations/2026_04_22_000006_create_dishes_table.php`
+- `status` default `Available`
+- có đầy đủ `created_at`, `updated_at`
+
+### 3) Chuẩn hóa kiến trúc theo SOLID trong Laravel
+
+Mỗi module API nên đi theo flow:
+
+- Route (khai báo path + middleware)
+- FormRequest (validation)
+- Controller (thin controller)
+- Service (business use-case)
+- Repository Interface + Implementation (data access)
+- Model (Eloquent mapping)
+
+Điều này giúp giữ logic nhưng cải thiện maintainability so với controller-heavy style.
+
+### 4) Giữ nguyên auth semantics từ Node
+
+Node đang có pattern: Login AND (Owner OR Employee) cho API ghi dữ liệu. Khi migrate sang Laravel:
+
+- dùng `jwt.auth` để xác thực.
+- dùng `role:Owner,Employee` để mô phỏng `requireOwnerHook OR requireEmployeeHook`.
+
+### 5) Giữ nguyên response contract
+
+Với API thành công, trả về đúng cấu trúc:
+
+- `message`: giữ nguyên thông điệp nghiệp vụ.
+- `data`: giữ cấu trúc object/list theo API Node.
+
+Với API lỗi từ service, dùng exception có status code + error list để frontend không cần đổi nhiều.
+
+### 6) Chiến lược migrate dữ liệu từ SQLite
+
+Gợi ý quy trình an toàn:
+
+1. Export từng bảng từ SQLite (CSV/SQL dump).
+2. Chuẩn hóa enum value, định dạng thời gian, khóa ngoại.
+3. Import vào DB của Laravel sau khi chạy `php artisan migrate`.
+4. Đối soát record count + spot-check dữ liệu theo từng module.
+
+Nếu muốn không downtime, có thể chạy dual-write tạm thời ở một số API quan trọng trong giai đoạn chuyển tiếp.
+
+### 7) Checklist migrate theo module
+
+- [x] Auth
+- [x] Account
+- [x] Guest
+- [x] Dish
+- [ ] Table
+- [ ] Order
+- [ ] Indicator
+- [ ] Media/Static
+
+### 8) Chi tiết module Dish đã chuyển đổi
+
+Đường dẫn API được giữ nguyên:
+
+- `GET /dishes`
+- `GET /dishes/{id}`
+- `POST /dishes`
+- `PUT /dishes/{id}`
+- `DELETE /dishes/{id}`
+
+Auth giữ nguyên logic từ Node:
+
+- GET public.
+- POST/PUT/DELETE yêu cầu `jwt.auth` + `role:Owner,Employee`.
+
+Validation giữ tương đương:
+
+- `name`: required, max 256
+- `price`: số nguyên dương
+- `description`: required, max 10000
+- `image`: URL hợp lệ
+- `status`: `Available | Unavailable | Hidden` (optional)
+
+Các file chính:
+
+- `routes/api.php`
+- `app/Http/Controllers/DishController.php`
+- `app/Http/Requests/CreateDishRequest.php`
+- `app/Http/Requests/UpdateDishRequest.php`
+- `app/Services/DishService.php`
+- `app/Repositories/Contracts/DishRepositoryInterface.php`
+- `app/Repositories/DishRepository.php`
+- `app/Models/Dish.php`
+- `database/migrations/2026_04_22_000006_create_dishes_table.php`
 
 ## Kết quả kiến trúc hiện tại
 
@@ -147,11 +271,12 @@ Vị trí:
 - Luồng nghiệp vụ tập trung trong Service.
 - Truy cập data được đóng gói trong Repository.
 - Cấu trúc sẵn sàng cho unit test theo từng lớp.
+- Module Dish đã được chuyển từ Node.js sang Laravel với API path và logic tương thích.
 
 ## Hướng tiếp theo để hoàn thiện
 
-- Bổ sung unit test cho `AuthService`, `AccountService`, `GuestService`.
-- Bổ sung feature test cho auth/account endpoints.
+- Bổ sung unit test cho `AuthService`, `AccountService`, `GuestService`, `DishService`.
+- Bổ sung feature test cho auth/account/dish endpoints.
 - Cân nhắc thêm API Resources để chuẩn hóa output schema.
 
 Lệnh tạo migration

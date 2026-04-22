@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DishController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -52,5 +53,25 @@ Route::prefix('accounts')->middleware('jwt.auth')->group(function () {
     Route::middleware('role:Owner,Employee')->group(function () {
         Route::post('/guests', [AccountController::class, 'createGuest']);
         Route::get('/guests', [AccountController::class, 'getGuests']);
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| Dish Routes
+|--------------------------------------------------------------------------
+| Prefix: /dishes
+| Giữ nguyên đường dẫn từ Node.js + giữ nguyên logic CRUD
+*/
+Route::prefix('dishes')->group(function () {
+    // Public routes
+    Route::get('/', [DishController::class, 'index']);
+    Route::get('/{id}', [DishController::class, 'show'])->whereNumber('id');
+
+    // Login AND (Owner OR Employee)
+    Route::middleware(['jwt.auth', 'role:Owner,Employee'])->group(function () {
+        Route::post('/', [DishController::class, 'store']);
+        Route::put('/{id}', [DishController::class, 'update'])->whereNumber('id');
+        Route::delete('/{id}', [DishController::class, 'destroy'])->whereNumber('id');
     });
 });
