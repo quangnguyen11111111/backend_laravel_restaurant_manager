@@ -34,7 +34,7 @@ class Table extends Model
      */
     public function orders()
     {
-        return $this->hasMany(Order::class, 'table_number', 'number');
+        // return $this->hasMany(Order::class, 'table_number', 'number');
     }
 
     /**

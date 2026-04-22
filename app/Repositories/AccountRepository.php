@@ -4,13 +4,15 @@ namespace App\Repositories;
 
 use App\Models\Account;
 use App\Repositories\Contracts\AccountRepositoryInterface;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class AccountRepository implements AccountRepositoryInterface
 {
-    public function getAllOrderByCreatedAtDesc(): Collection
+    public function getPaginatedOrderByCreatedAtDesc(int $perPage, int $page): LengthAwarePaginator
     {
-        return Account::query()->orderBy('created_at', 'desc')->get();
+        return Account::query()
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage, ['*'], 'page', $page);
     }
 
     public function create(array $attributes): Account

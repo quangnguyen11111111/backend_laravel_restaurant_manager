@@ -3,11 +3,11 @@
 namespace App\Repositories\Contracts;
 
 use App\Models\Account;
-use Illuminate\Support\Collection;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 interface AccountRepositoryInterface
 {
-    public function getAllOrderByCreatedAtDesc(): Collection;
+    public function getPaginatedOrderByCreatedAtDesc(int $perPage, int $page): LengthAwarePaginator;
 
     public function create(array $attributes): Account;
 

@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\DB;
 
 class AccountService
 {
+    private const INDEX_PER_PAGE = 10;
+
     public function __construct(
         private readonly AccountRepositoryInterface $accountRepository,
         private readonly PendingImageWorkflowServiceInterface $pendingImageWorkflowService,
@@ -23,16 +25,32 @@ class AccountService
     ) {}
 
     /**
+     * @param array<string, mixed> $validated
      * @return array<string, mixed>
      */
-    public function index(): array
+    public function index(array $validated): array
     {
-        $accounts = $this->accountRepository
-            ->getAllOrderByCreatedAtDesc()
-            ->map(fn(Account $account): array => $this->mapAccount($account));
+        $page = (int) ($validated['page'] ?? 1);
+
+        $paginatedAccounts = $this->accountRepository->getPaginatedOrderByCreatedAtDesc(
+            self::INDEX_PER_PAGE,
+            $page
+        );
+
+        $accounts = collect($paginatedAccounts->items())
+            ->map(fn(Account $account): array => $this->mapAccount($account))
+            ->values();
 
         return [
             'data' => $accounts,
+            'pagination' => [
+                'page' => $paginatedAccounts->currentPage(),
+                'perPage' => $paginatedAccounts->perPage(),
+                'totalItems' => $paginatedAccounts->total(),
+                'totalPages' => $paginatedAccounts->lastPage(),
+                'hasNextPage' => $paginatedAccounts->hasMorePages(),
+                'hasPreviousPage' => $paginatedAccounts->currentPage() > 1,
+            ],
             'message' => 'Lấy danh sách nhân viên thành công',
         ];
     }
@@ -58,7 +76,7 @@ class AccountService
             ]);
 
             if ($hasNewAvatar) {
-                  $userIdOfUploader = $validated['userIdOfUploader'];
+                $userIdOfUploader = $validated['userIdOfUploader'];
                 $finalizedAvatar = $this->handleAvatar(
                     (string) $validated['avatarS3Key'],
                     $userIdOfUploader
