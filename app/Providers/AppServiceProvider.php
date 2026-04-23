@@ -11,7 +11,7 @@ use App\Repositories\Contracts\AuthRepositoryInterface;
 use App\Repositories\Contracts\DishRepositoryInterface;
 use App\Repositories\Contracts\GuestRepositoryInterface;
 use App\Services\Contracts\ImageStorageServiceInterface;
-use App\Services\Contracts\PendingImageWorkflowServiceInterface;
+use App\Services\Contracts\MediaUploadServiceInterface;
 use App\Services\PendingImageWorkflowService;
 use App\Services\S3ImageStorageService;
 use Illuminate\Support\ServiceProvider;
@@ -28,7 +28,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(DishRepositoryInterface::class, DishRepository::class);
         $this->app->bind(GuestRepositoryInterface::class, GuestRepository::class);
         $this->app->bind(ImageStorageServiceInterface::class, S3ImageStorageService::class);
-        $this->app->bind(PendingImageWorkflowServiceInterface::class, PendingImageWorkflowService::class);
+        $this->app->bind(MediaUploadServiceInterface::class, PendingImageWorkflowService::class);
     }
 
     /**

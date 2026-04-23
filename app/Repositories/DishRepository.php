@@ -4,15 +4,15 @@ namespace App\Repositories;
 
 use App\Models\Dish;
 use App\Repositories\Contracts\DishRepositoryInterface;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class DishRepository implements DishRepositoryInterface
 {
-    public function getAllOrderByCreatedAtDesc(): Collection
+    public function getPaginatedOrderByCreatedAtDesc(int $perPage, int $page): LengthAwarePaginator
     {
         return Dish::query()
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->paginate($perPage, ['*'], 'page', $page);
     }
 
     public function findById(int $id): ?Dish

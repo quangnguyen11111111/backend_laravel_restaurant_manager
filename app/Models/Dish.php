@@ -24,6 +24,7 @@ class Dish extends Model
         'price',
         'description',
         'image',
+        'image_s3_key',
         'status',
     ];
 

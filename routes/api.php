@@ -65,11 +65,15 @@ Route::prefix('accounts')->middleware('jwt.auth')->group(function () {
 */
 Route::prefix('dishes')->group(function () {
     // Public routes
+    // truyền page để phân trang, mặc định page=1 nếu không truyền
     Route::get('/', [DishController::class, 'index']);
+    // cần truyền id
     Route::get('/{id}', [DishController::class, 'show'])->whereNumber('id');
 
-    // Login AND (Owner OR Employee)
-    Route::middleware(['jwt.auth', 'role:Owner,Employee'])->group(function () {
+    // Login AND (Owner)
+    Route::middleware(['jwt.auth', 'role:Owner'])->group(function () {
+        Route::post('/image', [DishController::class, 'uploadImage']);
+        Route::delete('/image', [DishController::class, 'deleteUploadedImage']);
         Route::post('/', [DishController::class, 'store']);
         Route::put('/{id}', [DishController::class, 'update'])->whereNumber('id');
         Route::delete('/{id}', [DishController::class, 'destroy'])->whereNumber('id');

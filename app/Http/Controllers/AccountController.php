@@ -11,7 +11,6 @@ use App\Http\Requests\GetGuestListRequest;
 use App\Http\Requests\UpdateAvatarRequest;
 use App\Http\Requests\UpdateEmployeeRequest;
 use App\Http\Requests\UpdateMeRequest;
-use App\Models\Account;
 use App\Services\AccountService;
 use App\Services\GuestService;
 use Illuminate\Http\JsonResponse;

@@ -28,6 +28,7 @@ class CreateDishRequest extends BaseApiRequest
             'price' => ['required', 'integer', 'min:1'],
             'description' => ['required', 'string', 'max:10000'],
             'image' => ['required', 'url'],
+             'imageS3Key' => ['nullable', 'string', 'max:512', 'required_with:image'],
             'status' => ['nullable', Rule::in(Dish::STATUS_VALUES)],
         ];
     }
@@ -47,7 +48,8 @@ class CreateDishRequest extends BaseApiRequest
             'description.max' => 'Mô tả món ăn không được vượt quá 10000 ký tự',
             'image.required' => 'Hình ảnh món ăn là bắt buộc',
             'image.url' => 'Hình ảnh món ăn phải là URL hợp lệ',
-            'status.in' => 'Trạng thái món ăn không hợp lệ',
+            'imageS3Key.required_with' => 'Khóa ảnh S3 là bắt buộc khi gửi hình ảnh',
+            'imageS3Key.string' => 'Khóa ảnh S3 không hợp lệ',
         ];
     }
 }

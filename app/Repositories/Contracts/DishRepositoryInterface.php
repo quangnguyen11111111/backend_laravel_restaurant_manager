@@ -3,11 +3,11 @@
 namespace App\Repositories\Contracts;
 
 use App\Models\Dish;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 interface DishRepositoryInterface
 {
-    public function getAllOrderByCreatedAtDesc(): Collection;
+    public function getPaginatedOrderByCreatedAtDesc(int $perPage, int $page): LengthAwarePaginator;
 
     public function findById(int $id): ?Dish;
 
