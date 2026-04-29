@@ -28,6 +28,11 @@ class Table extends Model
     const STATUS_AVAILABLE = 'Available';
     const STATUS_HIDDEN = 'Hidden';
     const STATUS_RESERVED = 'Reserved';
+    const STATUS_VALUES = [
+        self::STATUS_AVAILABLE,
+        self::STATUS_HIDDEN,
+        self::STATUS_RESERVED,
+    ];
 
     /**
      * Get the orders for the table

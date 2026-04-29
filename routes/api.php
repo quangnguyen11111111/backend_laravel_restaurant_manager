@@ -3,6 +3,7 @@
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DishController;
+use App\Http\Controllers\TableController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -77,5 +78,25 @@ Route::prefix('dishes')->group(function () {
         Route::post('/', [DishController::class, 'store']);
         Route::put('/{id}', [DishController::class, 'update'])->whereNumber('id');
         Route::delete('/{id}', [DishController::class, 'destroy'])->whereNumber('id');
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| Table Routes
+|--------------------------------------------------------------------------
+| Prefix: /tables
+| Giữ nguyên đường dẫn từ Node.js + giữ nguyên logic CRUD
+*/
+Route::prefix('tables')->group(function () {
+    // Public routes
+    Route::get('/', [TableController::class, 'index']);
+    Route::get('/{number}', [TableController::class, 'show'])->whereNumber('number');
+
+    // Login AND (Owner OR Employee)
+    Route::middleware(['jwt.auth', 'role:Owner'])->group(function () {
+        Route::post('/', [TableController::class, 'store']);
+        Route::put('/{number}', [TableController::class, 'update'])->whereNumber('number');
+        Route::delete('/{number}', [TableController::class, 'destroy'])->whereNumber('number');
     });
 });

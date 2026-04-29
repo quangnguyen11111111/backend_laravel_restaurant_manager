@@ -33,4 +33,14 @@ class GuestRepository implements GuestRepositoryInterface
 
         return $query->get();
     }
+
+    public function clearRefreshTokensByTableNumber(int $tableNumber): int
+    {
+        return Guest::query()
+            ->where('table_number', $tableNumber)
+            ->update([
+                'refresh_token' => null,
+                'refresh_token_expires_at' => null,
+            ]);
+    }
 }

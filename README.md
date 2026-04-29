@@ -20,6 +20,7 @@ Nơi đã áp dụng:
 - `app/Services/AccountService.php`: use-case quản lý nhân viên, cập nhật profile, đổi mật khẩu.
 - `app/Services/GuestService.php`: use-case tạo guest và lấy danh sách guest theo bộ lọc.
 - `app/Services/DishService.php`: use-case CRUD món ăn, giữ nguyên logic từ Node.js.
+- `app/Services/TableService.php`: use-case CRUD bàn, bao gồm logic đổi token và thu hồi refresh token của guest theo bàn.
 
 Giá trị nhận được:
 
@@ -40,6 +41,8 @@ Nơi đã áp dụng:
 - `app/Repositories/GuestRepository.php`
 - `app/Repositories/Contracts/DishRepositoryInterface.php`
 - `app/Repositories/DishRepository.php`
+- `app/Repositories/Contracts/TableRepositoryInterface.php`
+- `app/Repositories/TableRepository.php`
 
 Giá trị nhận được:
 
@@ -60,6 +63,7 @@ Bindings:
 - `AccountRepositoryInterface -> AccountRepository`
 - `GuestRepositoryInterface -> GuestRepository`
 - `DishRepositoryInterface -> DishRepository`
+- `TableRepositoryInterface -> TableRepository`
 
 Giá trị nhận được:
 
@@ -77,6 +81,7 @@ Nơi đã áp dụng:
 - `app/Http/Controllers/AuthController.php`
 - `app/Http/Controllers/AccountController.php`
 - `app/Http/Controllers/DishController.php`
+- `app/Http/Controllers/TableController.php`
 
 Giá trị nhận được:
 
@@ -99,6 +104,7 @@ Vị trí:
 - `app/Http/Controllers/AuthController.php`
 - `app/Http/Controllers/AccountController.php`
 - `app/Http/Controllers/DishController.php`
+- `app/Http/Controllers/TableController.php`
 - `app/Services/*.php`
 - `app/Repositories/*.php`
 
@@ -126,6 +132,7 @@ Vị trí:
 - `AccountRepository` thay thế `AccountRepositoryInterface`
 - `GuestRepository` thay thế `GuestRepositoryInterface`
 - `DishRepository` thay thế `DishRepositoryInterface`
+- `TableRepository` thay thế `TableRepositoryInterface`
 
 ### I - Interface Segregation Principle (ISP)
 
@@ -135,8 +142,9 @@ Vị trí:
 
 - `AuthRepositoryInterface` chỉ chứa method liên quan auth token/account email.
 - `AccountRepositoryInterface` chỉ chứa method cho account lifecycle.
-- `GuestRepositoryInterface` chỉ chứa method cho guest/table query.
+- `GuestRepositoryInterface` chỉ chứa method cho guest/table query và token cleanup của guest.
 - `DishRepositoryInterface` chỉ chứa method cho truy vấn/CRUD món ăn.
+- `TableRepositoryInterface` chỉ chứa method cho truy vấn/CRUD bàn.
 
 ### D - Dependency Inversion Principle (DIP)
 
@@ -148,6 +156,7 @@ Vị trí:
 - `AccountService` phụ thuộc `AccountRepositoryInterface`.
 - `GuestService` phụ thuộc `GuestRepositoryInterface`.
 - `DishService` phụ thuộc `DishRepositoryInterface`.
+- `TableService` phụ thuộc `TableRepositoryInterface` và `GuestRepositoryInterface`.
 - Container bind abstraction -> concrete trong `AppServiceProvider`.
 
 ## Hướng dẫn chuyển giao từ Node.js + SQLite sang Laravel
@@ -178,6 +187,13 @@ Ví dụ module Dish đã chuyển:
 - Prisma `Dish` -> migration `database/migrations/2026_04_22_000006_create_dishes_table.php`
 - `status` default `Available`
 - có đầy đủ `created_at`, `updated_at`
+
+Ví dụ module Table đang dùng migration tương thích Node:
+
+- Prisma `Table` -> migration `database/migrations/2026_04_07_000004_create_tables_table.php`
+- `number` là khóa chính
+- `status` default `Available`
+- `token` được sinh ngẫu nhiên khi tạo bàn
 
 ### 3) Chuẩn hóa kiến trúc theo SOLID trong Laravel
 
@@ -225,7 +241,7 @@ Nếu muốn không downtime, có thể chạy dual-write tạm thời ở một
 - [x] Account
 - [x] Guest
 - [x] Dish
-- [ ] Table
+- [x] Table
 - [ ] Order
 - [ ] Indicator
 - [ ] Media/Static
@@ -265,6 +281,45 @@ Các file chính:
 - `app/Models/Dish.php`
 - `database/migrations/2026_04_22_000006_create_dishes_table.php`
 
+### 9) Chi tiết module Table đã chuyển đổi
+
+Đường dẫn API được giữ nguyên:
+
+- `GET /tables`
+- `GET /tables/{number}`
+- `POST /tables`
+- `PUT /tables/{number}`
+- `DELETE /tables/{number}`
+
+Auth giữ nguyên logic từ Node:
+
+- GET public.
+- POST/PUT/DELETE yêu cầu `jwt.auth` + `role:Owner,Employee`.
+
+Validation giữ tương đương:
+
+- `number`: số nguyên dương
+- `capacity`: số nguyên dương
+- `status`: `Available | Hidden | Reserved` (optional)
+- `changeToken` (khi update): boolean bắt buộc
+
+Logic nghiệp vụ quan trọng giữ nguyên:
+
+- Khi tạo bàn: backend tự sinh `token` ngẫu nhiên.
+- Khi cập nhật với `changeToken=true`: đổi token mới và xóa toàn bộ `refresh_token`, `refresh_token_expires_at` của guest đang gắn với bàn đó.
+
+Các file chính:
+
+- `routes/api.php`
+- `app/Http/Controllers/TableController.php`
+- `app/Http/Requests/CreateTableRequest.php`
+- `app/Http/Requests/UpdateTableRequest.php`
+- `app/Services/TableService.php`
+- `app/Repositories/Contracts/TableRepositoryInterface.php`
+- `app/Repositories/TableRepository.php`
+- `app/Models/Table.php`
+- `database/migrations/2026_04_07_000004_create_tables_table.php`
+
 ## Kết quả kiến trúc hiện tại
 
 - Controller đã mỏng và dễ đọc hơn.
@@ -272,11 +327,12 @@ Các file chính:
 - Truy cập data được đóng gói trong Repository.
 - Cấu trúc sẵn sàng cho unit test theo từng lớp.
 - Module Dish đã được chuyển từ Node.js sang Laravel với API path và logic tương thích.
+- Module Table đã được chuyển từ Node.js sang Laravel với API path và logic tương thích.
 
 ## Hướng tiếp theo để hoàn thiện
 
-- Bổ sung unit test cho `AuthService`, `AccountService`, `GuestService`, `DishService`.
-- Bổ sung feature test cho auth/account/dish endpoints.
+- Bổ sung unit test cho `AuthService`, `AccountService`, `GuestService`, `DishService`, `TableService`.
+- Bổ sung feature test cho auth/account/dish/table endpoints.
 - Cân nhắc thêm API Resources để chuẩn hóa output schema.
 
 Lệnh tạo migration
