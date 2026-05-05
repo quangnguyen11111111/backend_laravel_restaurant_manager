@@ -22,6 +22,77 @@ class DishService
     ) {}
 
     /**
+     * Lấy danh sách dishes cho admin (tất cả)
+     * @param array<string, mixed> $validated
+     * @return array<string, mixed>
+     */
+    public function indexForAdmin(array $validated): array
+    {
+        $page = (int) ($validated['page'] ?? 1);
+
+        $paginatedDishes = $this->dishRepository->getPaginatedForAdmin(
+            self::INDEX_PER_PAGE,
+            $page
+        );
+
+        $dishes = collect($paginatedDishes->items())
+            ->map(fn(Dish $dish): array => $this->mapDishForAdmin($dish))
+            ->values();
+
+        return [
+            'data' => $dishes,
+            'pagination' => [
+                'page' => $paginatedDishes->currentPage(),
+                'perPage' => $paginatedDishes->perPage(),
+                'totalItems' => $paginatedDishes->total(),
+                'totalPages' => $paginatedDishes->lastPage(),
+                'hasNextPage' => $paginatedDishes->hasMorePages(),
+                'hasPreviousPage' => $paginatedDishes->currentPage() > 1,
+            ],
+            'message' => 'Lấy danh sách món ăn thành công!',
+        ];
+    }
+
+    /**
+     * Lấy danh sách dishes cho user (theo category)
+     * @param array<string, mixed> $validated
+     * @return array<string, mixed>
+     */
+    public function indexForUser(array $validated): array
+    {
+        $categoryId = (int) ($validated['category_id'] ?? 0);
+        $page = (int) ($validated['page'] ?? 1);
+
+        if ($categoryId <= 0) {
+            throw new ServiceException('category_id không hợp lệ', 400);
+        }
+
+        $paginatedDishes = $this->dishRepository->getPaginatedByCategoryId(
+            $categoryId,
+            self::INDEX_PER_PAGE,
+            $page
+        );
+
+        $dishes = collect($paginatedDishes->items())
+            ->map(fn(Dish $dish): array => $this->mapDishForUser($dish))
+            ->values();
+
+        return [
+            'data' => $dishes,
+            'pagination' => [
+                'page' => $paginatedDishes->currentPage(),
+                'perPage' => $paginatedDishes->perPage(),
+                'totalItems' => $paginatedDishes->total(),
+                'totalPages' => $paginatedDishes->lastPage(),
+                'hasNextPage' => $paginatedDishes->hasMorePages(),
+                'hasPreviousPage' => $paginatedDishes->currentPage() > 1,
+            ],
+            'message' => 'Lấy danh sách món ăn thành công!',
+        ];
+    }
+
+    /**
+     * Lấy danh sách dishes cũ (deprecated - giữ để backward compatible)
      * @param array<string, mixed> $validated
      * @return array<string, mixed>
      */
@@ -87,7 +158,7 @@ class DishService
                         (string) $validated['imageS3Key'],
                         $actor->id
                     );
-                    
+
                     $newImageUrl = $finalizedImage['url'];
                     $finalizedImageS3Key = $finalizedImage['key'];
                     $newImageS3Key = $finalizedImageS3Key;
@@ -103,6 +174,10 @@ class DishService
 
                 if (array_key_exists('status', $validated) && !empty($validated['status'])) {
                     $attributes['status'] = $validated['status'];
+                }
+
+                if (!empty($validated['category_id'])) {
+                    $attributes['category_id'] = (int) $validated['category_id'];
                 }
 
                 $dish = $this->dishRepository->create($attributes);
@@ -149,6 +224,7 @@ class DishService
         $oldImage = $dish->image;
         $oldImageS3Key = $dish->image_s3_key;
         $oldStatus = $dish->status;
+        $oldCategoryId = $dish->category_id;
 
         $newImageUrl = $validated['image'];
         $newImageS3Key = $dish->image_s3_key;
@@ -178,6 +254,10 @@ class DishService
             $attributes['status'] = $validated['status'];
         }
 
+        if (array_key_exists('category_id', $validated)) {
+            $attributes['category_id'] = !empty($validated['category_id']) ? (int) $validated['category_id'] : null;
+        }
+
         $updated = $this->dishRepository->update($dish, $attributes);
 
         if (!$updated) {
@@ -202,6 +282,7 @@ class DishService
                     'image' => $oldImage,
                     'image_s3_key' => $oldImageS3Key,
                     'status' => $oldStatus,
+                    'category_id' => $oldCategoryId,
                 ]);
 
                 $this->mediaUploadService->safeDeleteImage((string) $newImageS3Key);
@@ -250,6 +331,44 @@ class DishService
     }
 
     /**
+     * Map dish cho admin (đầy đủ thông tin)
+     * @return array<string, mixed>
+     */
+    private function mapDishForAdmin(Dish $dish): array
+    {
+        return [
+            'id' => $dish->id,
+            'name' => $dish->name,
+            'price' => $dish->price,
+            'description' => $dish->description,
+            'image' => $dish->image,
+            'status' => $dish->status,
+            'category_id' => $dish->category_id,
+            'category' => $dish->category ? [
+                'id' => $dish->category->id,
+                'name' => $dish->category->name,
+            ] : null,
+            'createdAt' => $dish->created_at?->toIso8601String(),
+            'updatedAt' => $dish->updated_at?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * Map dish cho user (thông tin hiển thị)
+     * @return array<string, mixed>
+     */
+    private function mapDishForUser(Dish $dish): array
+    {
+        return [
+            'id' => $dish->id,
+            'name' => $dish->name,
+            'price' => $dish->price,
+            'description' => $dish->description,
+            'image' => $dish->image,
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function mapDish(Dish $dish): array
@@ -262,6 +381,7 @@ class DishService
             'image' => $dish->image,
             'imageS3Key' => $dish->image_s3_key,
             'status' => $dish->status,
+            'category_id' => $dish->category_id,
             'createdAt' => $dish->created_at,
             'updatedAt' => $dish->updated_at,
         ];

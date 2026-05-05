@@ -1,0 +1,54 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('categories', function (Blueprint $table) {
+            $columns = [];
+
+            if (Schema::hasColumn('categories', 'description')) {
+                $columns[] = 'description';
+            }
+
+            if (Schema::hasColumn('categories', 'image')) {
+                $columns[] = 'image';
+            }
+
+            if (Schema::hasColumn('categories', 'image_s3_key')) {
+                $columns[] = 'image_s3_key';
+            }
+
+            if ($columns !== []) {
+                $table->dropColumn($columns);
+            }
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('categories', function (Blueprint $table) {
+            if (!Schema::hasColumn('categories', 'description')) {
+                $table->text('description')->nullable();
+            }
+
+            if (!Schema::hasColumn('categories', 'image')) {
+                $table->string('image')->nullable();
+            }
+
+            if (!Schema::hasColumn('categories', 'image_s3_key')) {
+                $table->string('image_s3_key')->nullable();
+            }
+        });
+    }
+};

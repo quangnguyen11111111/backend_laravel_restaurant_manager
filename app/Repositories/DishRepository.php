@@ -8,6 +8,33 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class DishRepository implements DishRepositoryInterface
 {
+    /**
+     * Lấy danh sách dishes cho admin (tất cả)
+     */
+    public function getPaginatedForAdmin(int $perPage, int $page): LengthAwarePaginator
+    {
+        return Dish::query()
+            ->with('category')
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage, ['*'], 'page', $page);
+    }
+
+    /**
+     * Lấy danh sách dishes cho user (theo category)
+     */
+    public function getPaginatedByCategoryId(int $categoryId, int $perPage, int $page): LengthAwarePaginator
+    {
+        return Dish::query()
+            ->where('category_id', $categoryId)
+            ->where('status', '!=', Dish::STATUS_HIDDEN)
+            ->with('category')
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage, ['*'], 'page', $page);
+    }
+
+    /**
+     * Lấy danh sách dishes cũ (deprecated - giữ để backward compatible)
+     */
     public function getPaginatedOrderByCreatedAtDesc(int $perPage, int $page): LengthAwarePaginator
     {
         return Dish::query()

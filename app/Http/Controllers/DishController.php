@@ -20,7 +20,31 @@ class DishController extends Controller
     ) {}
 
     /**
-     * GET /dishes
+     * GET /admin/dishes - Lấy danh sách dishes cho admin
+     */
+    public function indexForAdmin(GetDishListRequest $request): JsonResponse
+    {
+        $result = $this->dishService->indexForAdmin($request->validated());
+
+        return response()->json($result);
+    }
+
+    /**
+     * GET /dishes - Lấy danh sách dishes cho user
+     */
+    public function indexForUser(GetDishListRequest $request): JsonResponse
+    {
+        try {
+            $result = $this->dishService->indexForUser($request->validated());
+
+            return response()->json($result);
+        } catch (ServiceException $exception) {
+            return $this->jsonErrorResponse($exception);
+        }
+    }
+
+    /**
+     * GET /dishes (cũ - backward compatible)
      */
     public function index(GetDishListRequest $request): JsonResponse
     {
@@ -44,7 +68,7 @@ class DishController extends Controller
     }
 
     /**
-     * POST /dishes
+     * POST /admin/dishes
      */
     public function store(CreateDishRequest $request): JsonResponse
     {
@@ -64,7 +88,7 @@ class DishController extends Controller
     }
 
     /**
-     * PUT /dishes/{id}
+     * PUT /admin/dishes/{id}
      */
     public function update(UpdateDishRequest $request, int $id): JsonResponse
     {
@@ -84,7 +108,7 @@ class DishController extends Controller
     }
 
     /**
-     * DELETE /dishes/{id}
+     * DELETE /admin/dishes/{id}
      */
     public function destroy(int $id): JsonResponse
     {

@@ -12,6 +12,12 @@ class UpdateDishRequest extends CreateDishRequest
         // Khi cập nhật, ảnh không bắt buộc, nhưng nếu có ảnh thì phải có imageS3Key
         $rules['imageS3Key'] = ['nullable', 'string', 'max:512'];
 
+        // Name, price, description, image không bắt buộc khi cập nhật
+        $rules['name'] = ['nullable', 'string', 'min:1', 'max:256'];
+        $rules['price'] = ['nullable', 'integer', 'min:1'];
+        $rules['description'] = ['nullable', 'string', 'max:10000'];
+        $rules['image'] = ['nullable', 'url'];
+
         return $rules;
     }
 }

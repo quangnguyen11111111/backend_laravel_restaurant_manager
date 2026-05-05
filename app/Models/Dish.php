@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Dish extends Model
 {
@@ -26,6 +27,7 @@ class Dish extends Model
         'image',
         'image_s3_key',
         'status',
+        'category_id',
     ];
 
     protected $casts = [
@@ -33,4 +35,12 @@ class Dish extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
+
+    /**
+     * Danh mục của món ăn
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
+    }
 }

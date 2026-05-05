@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DishController;
 use App\Http\Controllers\TableController;
 use Illuminate\Http\Request;
@@ -59,26 +60,58 @@ Route::prefix('accounts')->middleware('jwt.auth')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
+| Category Routes
+|--------------------------------------------------------------------------
+| Prefix: /categories (user) và /admin/categories (admin)
+*/
+// User routes - Public
+Route::prefix('categories')->group(function () {
+    // Lấy danh sách danh mục dạng cây (không phân trang)
+    Route::get('/', [CategoryController::class, 'indexForUser']);
+    // Lấy chi tiết danh mục
+    Route::get('/{id}', [CategoryController::class, 'show'])->whereNumber('id');
+});
+
+// Admin routes - Yêu cầu quyền Owner
+Route::prefix('admin/categories')->middleware(['jwt.auth', 'role:Owner'])->group(function () {
+    // Lấy danh sách danh mục dạng phẳng (có phân trang)
+    Route::get('/', [CategoryController::class, 'indexForAdmin']);
+    // Tạo danh mục
+    Route::post('/', [CategoryController::class, 'store']);
+    // Cập nhật danh mục
+    Route::put('/{id}', [CategoryController::class, 'update'])->whereNumber('id');
+    // Xóa danh mục
+    Route::delete('/{id}', [CategoryController::class, 'destroy'])->whereNumber('id');
+});
+
+/*
+|--------------------------------------------------------------------------
 | Dish Routes
 |--------------------------------------------------------------------------
-| Prefix: /dishes
-| Giữ nguyên đường dẫn từ Node.js + giữ nguyên logic CRUD
+| User: GET /dishes (theo category)
+| Admin: GET/POST/PUT/DELETE /admin/dishes
 */
+// User routes - Public
 Route::prefix('dishes')->group(function () {
-    // Public routes
-    // truyền page để phân trang, mặc định page=1 nếu không truyền
-    Route::get('/', [DishController::class, 'index']);
-    // cần truyền id
+    // Lấy danh sách dishes theo category (yêu cầu category_id)
+    Route::get('/', [DishController::class, 'indexForUser']);
+    // Lấy chi tiết dish
     Route::get('/{id}', [DishController::class, 'show'])->whereNumber('id');
+});
 
-    // Login AND (Owner)
-    Route::middleware(['jwt.auth', 'role:Owner'])->group(function () {
-        Route::post('/image', [DishController::class, 'uploadImage']);
-        Route::delete('/image', [DishController::class, 'deleteUploadedImage']);
-        Route::post('/', [DishController::class, 'store']);
-        Route::put('/{id}', [DishController::class, 'update'])->whereNumber('id');
-        Route::delete('/{id}', [DishController::class, 'destroy'])->whereNumber('id');
-    });
+// Admin routes - Yêu cầu quyền Owner
+Route::prefix('admin/dishes')->middleware(['jwt.auth', 'role:Owner'])->group(function () {
+    // Lấy danh sách tất cả dishes (admin)
+    Route::get('/', [DishController::class, 'indexForAdmin']);
+    // Upload ảnh
+    Route::post('/image', [DishController::class, 'uploadImage']);
+    Route::delete('/image', [DishController::class, 'deleteUploadedImage']);
+    // Tạo dish
+    Route::post('/', [DishController::class, 'store']);
+    // Cập nhật dish
+    Route::put('/{id}', [DishController::class, 'update'])->whereNumber('id');
+    // Xóa dish
+    Route::delete('/{id}', [DishController::class, 'destroy'])->whereNumber('id');
 });
 
 /*

@@ -28,8 +28,9 @@ class CreateDishRequest extends BaseApiRequest
             'price' => ['required', 'integer', 'min:1'],
             'description' => ['required', 'string', 'max:10000'],
             'image' => ['required', 'url'],
-             'imageS3Key' => ['nullable', 'string', 'max:512', 'required_with:image'],
+            'imageS3Key' => ['nullable', 'string', 'max:512', 'required_with:image'],
             'status' => ['nullable', Rule::in(Dish::STATUS_VALUES)],
+            'category_id' => ['required', 'integer', 'exists:categories,id'],
         ];
     }
 
@@ -50,6 +51,11 @@ class CreateDishRequest extends BaseApiRequest
             'image.url' => 'Hình ảnh món ăn phải là URL hợp lệ',
             'imageS3Key.required_with' => 'Khóa ảnh S3 là bắt buộc khi gửi hình ảnh',
             'imageS3Key.string' => 'Khóa ảnh S3 không hợp lệ',
+            'category_id.integer' => 'ID danh mục phải là số nguyên',
+            'category_id.exists' => 'Danh mục không tồn tại',
+            'category_id.required' => 'Danh mục là bắt buộc',
+            
         ];
     }
 }
+
