@@ -50,13 +50,18 @@ class CategoryService
      * Lấy danh sách category dạng cây cho user (không phân trang)
      * @return array<string, mixed>
      */
-    public function indexForUser(): array
+    public function indexForUser(bool $listTree = true): array
     {
-        $rootCategories = $this->categoryRepository->getRootCategories();
+        if ($listTree) {
+            $rootCategories = $this->categoryRepository->getRootCategories();
 
-        $tree = collect($rootCategories)
-            ->map(fn(Category $category): array => $this->buildCategoryTree($category))
-            ->values();
+            $tree = collect($rootCategories)
+                ->map(fn(Category $category): array => $this->buildCategoryTree($category))
+                ->values()
+                ->toArray();
+        } else {
+            $tree = $this->buildCategoryTreeWithOrderFilter();
+        }
 
         return [
             'data' => $tree,
@@ -138,7 +143,12 @@ class CategoryService
                 throw new ServiceException('Không thể chọn danh mục này làm cha của chính nó', 400);
             }
 
-            $parentCategory = $this->categoryRepository->findById((int) $validated['parent_id']);
+            $parentId = (int) $validated['parent_id'];
+            if ($this->isDescendant($id, $parentId)) {
+                throw new ServiceException('Không thể chọn danh mục con làm cha', 400);
+            }
+
+            $parentCategory = $this->categoryRepository->findById($parentId);
             if (!$parentCategory) {
                 throw new ServiceException('Danh mục cha không tồn tại', 404);
             }
@@ -208,6 +218,47 @@ class CategoryService
     }
 
     /**
+     * Kiểm tra danh mục có phải là hậu duệ của danh mục hiện tại không
+     */
+    private function isDescendant(int $categoryId, int $possibleParentId): bool
+    {
+        $categories = $this->categoryRepository->getAll();
+        $childrenMap = [];
+
+        foreach ($categories as $category) {
+            if ($category->parent_id !== null) {
+                $parentId = (int) $category->parent_id;
+                $childrenMap[$parentId][] = (int) $category->id;
+            }
+        }
+
+        $queue = $childrenMap[$categoryId] ?? [];
+        $visited = [];
+
+        for ($index = 0; $index < count($queue); $index++) {
+            $currentId = $queue[$index];
+
+            if ($currentId === $possibleParentId) {
+                return true;
+            }
+
+            if (isset($visited[$currentId])) {
+                continue;
+            }
+
+            $visited[$currentId] = true;
+
+            if (!empty($childrenMap[$currentId])) {
+                foreach ($childrenMap[$currentId] as $childId) {
+                    $queue[] = $childId;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Xây dựng cây category (dạng nested)
      * @return array<string, mixed>
      */
@@ -217,6 +268,7 @@ class CategoryService
             'id' => $category->id,
             'name' => $category->name,
             'status' => $category->status,
+            'parent_id' => $category->parent_id,
         ];
 
         // Nếu có children, thêm vào
@@ -225,6 +277,71 @@ class CategoryService
                 ->map(fn(Category $child): array => $this->buildCategoryTree($child))
                 ->values()
                 ->toArray();
+        }
+
+        return $data;
+    }
+
+    /**
+     * Xây dựng cây category chỉ lấy các danh mục có order khác 0
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildCategoryTreeWithOrderFilter(): array
+    {
+        $categories = $this->categoryRepository->getAll();
+        $categoryMap = [];
+        $childrenMap = [];
+
+        foreach ($categories as $category) {
+            if ((int) $category->order === 0) {
+                continue;
+            }
+
+            $categoryMap[$category->id] = $category;
+
+            if ($category->parent_id !== null) {
+                $parentId = (int) $category->parent_id;
+                $childrenMap[$parentId][] = (int) $category->id;
+            }
+        }
+
+        $roots = [];
+        foreach ($categoryMap as $id => $category) {
+            $parentId = $category->parent_id !== null ? (int) $category->parent_id : null;
+            if ($parentId === null || !isset($categoryMap[$parentId])) {
+                $roots[] = $id;
+            }
+        }
+
+        $tree = [];
+        foreach ($roots as $rootId) {
+            $tree[] = $this->buildCategoryTreeFromMaps($rootId, $categoryMap, $childrenMap);
+        }
+
+        return $tree;
+    }
+
+    /**
+     * Xây dựng node tree từ map category theo id
+     * @param array<int, Category> $categoryMap
+     * @param array<int, int[]> $childrenMap
+     * @return array<string, mixed>
+     */
+    private function buildCategoryTreeFromMaps(int $categoryId, array $categoryMap, array $childrenMap): array
+    {
+        $category = $categoryMap[$categoryId];
+
+        $data = [
+            'id' => $category->id,
+            'name' => $category->name,
+            'status' => $category->status,
+        ];
+
+        if (!empty($childrenMap[$categoryId])) {
+            $data['children'] = array_map(
+                fn(int $childId): array => $this->buildCategoryTreeFromMaps($childId, $categoryMap, $childrenMap),
+                $childrenMap[$categoryId]
+            );
         }
 
         return $data;

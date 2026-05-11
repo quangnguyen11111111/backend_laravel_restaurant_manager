@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exceptions\ServiceException;
 use App\Http\Requests\CreateCategoryRequest;
 use App\Http\Requests\GetCategoryListRequest;
+use App\Http\Requests\GetCategoryTreeRequest;
 use App\Http\Requests\UpdateCategoryRequest;
 use App\Services\CategoryService;
 use Illuminate\Http\JsonResponse;
@@ -28,9 +29,10 @@ class CategoryController extends Controller
     /**
      * GET /categories - Lấy danh sách category dạng cây (user)
      */
-    public function indexForUser(): JsonResponse
+    public function indexForUser(GetCategoryTreeRequest $request): JsonResponse
     {
-        $result = $this->categoryService->indexForUser();
+        $listTree = $request->boolean('listtree', true);
+        $result = $this->categoryService->indexForUser($listTree);
 
         return response()->json($result);
     }

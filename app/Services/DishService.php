@@ -10,6 +10,7 @@ use App\Services\Contracts\MediaUploadServiceInterface;
 use App\Support\ImageScope;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use App\Models\Category;
 use Throwable;
 
 class DishService
@@ -67,11 +68,29 @@ class DishService
             throw new ServiceException('category_id không hợp lệ', 400);
         }
 
-        $paginatedDishes = $this->dishRepository->getPaginatedByCategoryId(
-            $categoryId,
-            self::INDEX_PER_PAGE,
-            $page
+        $category = Category::with('children')
+            ->find($categoryId);
+
+        if (!$category) {
+            throw new ServiceException('Danh mục không tồn tại', 404);
+        }
+
+        // Lấy tất cả category_id 
+        $childrenIds = $category->getAllChildrenIds();
+
+        $categoryIds = array_merge(
+            [$category->id],
+            $childrenIds
         );
+
+        // Lấy dishes theo category_id (bao gồm cả category con)
+        $paginatedDishes = $this->dishRepository
+
+            ->getPaginatedByCategoryId(
+                $categoryIds,
+                self::INDEX_PER_PAGE,
+                $page
+            );
 
         $dishes = collect($paginatedDishes->items())
             ->map(fn(Dish $dish): array => $this->mapDishForUser($dish))

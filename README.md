@@ -341,3 +341,7 @@ Lệnh tạo seeder
 php artisan db:seed
 Lệnh chạy server
 php artisan serve
+
+**Order & Guest Migration**: Order và Guest được tách theo Service + Repository. `app/Services/OrderService.php` implement toàn bộ luồng tạo đơn, snapshot món, cập nhật trạng thái, và thanh toán; `app/Http/Controllers/OrderController.php` là thin controller. `app/Http/Controllers/GuestController.php` giữ logic token (access/refresh) tương tự Node, bao gồm refresh token giữ nguyên expiry và xóa refresh token khi token bàn đổi.
+
+**Áp dụng Patterns**: Service pattern cho business logic, Repository pattern cho data access, FormRequest cho validation, Exception-based error flow cho mapping lỗi service -> HTTP response.

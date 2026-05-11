@@ -5,6 +5,9 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DishController;
 use App\Http\Controllers\TableController;
+use App\Http\Controllers\GuestController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\SocketController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -132,4 +135,56 @@ Route::prefix('tables')->group(function () {
         Route::put('/{number}', [TableController::class, 'update'])->whereNumber('number');
         Route::delete('/{number}', [TableController::class, 'destroy'])->whereNumber('number');
     });
+});
+
+/*
+|--------------------------------------------------------------------------
+| Guest Routes
+|--------------------------------------------------------------------------
+| Prefix: /guests (giữ nguyên đường dẫn từ Node.js)
+*/
+Route::prefix('guests')->group(function () {
+    Route::post('/auth/login', [GuestController::class, 'login']);
+    Route::post('/auth/logout', [GuestController::class, 'logout'])->middleware('jwt.auth');
+    Route::post('/auth/refresh-token', [GuestController::class, 'refreshToken']);
+
+    Route::middleware(['jwt.auth', 'role:Guest'])->group(function () {
+        Route::post('/orders', [GuestController::class, 'createOrders']);
+        Route::get('/orders', [GuestController::class, 'getOrders']);
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| Order Routes
+|--------------------------------------------------------------------------
+| Prefix: /orders (giữ nguyên đường dẫn từ Node.js)
+*/
+Route::prefix('orders')->middleware(['jwt.auth', 'role:Owner,Employee'])->group(function () {
+    Route::post('/', [OrderController::class, 'store']);
+    Route::get('/', [OrderController::class, 'index']);
+    Route::get('/{orderId}', [OrderController::class, 'show'])->whereNumber('orderId');
+    Route::put('/{orderId}', [OrderController::class, 'update'])->whereNumber('orderId');
+    Route::post('/pay', [OrderController::class, 'pay']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Socket Routes (cho Socket Server Node.js)
+|--------------------------------------------------------------------------
+| Prefix: /sockets
+| Các endpoint này được gọi từ socket-server.js để quản lý socket connections
+*/
+Route::prefix('sockets')->middleware('jwt.auth')->group(function () {
+    // Upsert socket connection (được gọi từ socket-server.js)
+    Route::post('/upsert', [SocketController::class, 'upsert']);
+
+    // Remove socket connection (được gọi từ socket-server.js)
+    Route::post('/remove', [SocketController::class, 'remove']);
+
+    // Find socket ID của user (được gọi từ socket-server.js)
+    Route::get('/find/{userId}', [SocketController::class, 'find']);
+
+    // Get all manager socket IDs (để broadcast tới managers)
+    Route::get('/managers', [SocketController::class, 'getManagers']);
 });

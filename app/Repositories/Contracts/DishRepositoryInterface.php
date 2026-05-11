@@ -15,7 +15,7 @@ interface DishRepositoryInterface
     /**
      * Lấy danh sách dishes cho user (theo category)
      */
-    public function getPaginatedByCategoryId(int $categoryId, int $perPage, int $page): LengthAwarePaginator;
+    public function getPaginatedByCategoryId(array $categoryIds, int $perPage, int $page): LengthAwarePaginator;
 
     /**
      * Lấy danh sách dishes cũ (deprecated - giữ để backward compatible)

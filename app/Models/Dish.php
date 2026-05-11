@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Dish extends Model
 {
@@ -42,5 +43,13 @@ class Dish extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * Snapshots of this dish
+     */
+    public function dishSnapshots(): HasMany
+    {
+        return $this->hasMany(DishSnapshot::class, 'dish_id');
     }
 }

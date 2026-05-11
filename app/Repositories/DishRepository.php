@@ -22,10 +22,10 @@ class DishRepository implements DishRepositoryInterface
     /**
      * Lấy danh sách dishes cho user (theo category)
      */
-    public function getPaginatedByCategoryId(int $categoryId, int $perPage, int $page): LengthAwarePaginator
+    public function getPaginatedByCategoryId(array $categoryIds, int $perPage, int $page): LengthAwarePaginator
     {
         return Dish::query()
-            ->where('category_id', $categoryId)
+            ->whereIn('category_id', $categoryIds)
             ->where('status', '!=', Dish::STATUS_HIDDEN)
             ->with('category')
             ->orderBy('created_at', 'desc')

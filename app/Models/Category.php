@@ -54,4 +54,21 @@ class Category extends Model
     {
         return $this->children();
     }
+    
+    public function getAllChildrenIds(): array
+    {
+        $ids = [];
+
+        foreach ($this->children as $child) {
+
+            $ids[] = $child->id;
+
+            $ids = array_merge(
+                $ids,
+                $child->getAllChildrenIds()
+            );
+        }
+
+        return $ids;
+    }
 }

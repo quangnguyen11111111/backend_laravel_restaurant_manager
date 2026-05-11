@@ -4,11 +4,17 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "socket": "node socket-server.js",
+        "dev:socket": "concurrently \"npm run dev\" \"npm run socket\""
+    },
+    "dependencies": {
+        "socket.io": "^4.8.1",
+        "axios": "^1.7.8",
+        "dotenv": "^16.4.7"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
-        "axios": "^1.11.0",
         "concurrently": "^9.0.1",
         "laravel-vite-plugin": "^2.0.0",
         "tailwindcss": "^4.0.0",
