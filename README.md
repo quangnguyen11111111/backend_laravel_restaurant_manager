@@ -329,6 +329,68 @@ Các file chính:
 - Module Dish đã được chuyển từ Node.js sang Laravel với API path và logic tương thích.
 - Module Table đã được chuyển từ Node.js sang Laravel với API path và logic tương thích.
 
+## Full architecture diagram (onboarding)
+
+```plantuml
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Web/Mobile Client" as Client
+
+package "Backend (Laravel)" as BackendLaravel {
+  package "HTTP Layer" as HttpLayer {
+    component "routes/api.php" as Routes
+    component "Controllers\n(Auth, Account, Guest,\nDish, Table, Order, Category, Socket)" as Controllers
+    component "Form Requests\n(BaseApiRequest + module requests)" as Requests
+    component "Middleware\n(JwtAuthenticate, CheckRole)" as Middleware
+  }
+
+  package "Application Layer" as AppLayer {
+    component "Services\n(AuthService, AccountService,\nGuestService, DishService,\nTableService, OrderService,\nCategoryService, SocketService)" as Services
+    component "Service Exceptions\n(ServiceException,\nAuthServiceException)" as ServiceExceptions
+  }
+
+  package "Domain/Data Access Layer" as DomainLayer {
+    interface "Repository Contracts" as RepoContracts
+    component "Repository Implementations" as Repos
+    component "Eloquent Models\n(Account, Guest, Dish,\nCategory, Table, Order,\nDishSnapshot, RefreshToken,\nSocket, User)" as Models
+  }
+
+  package "Infrastructure Layer" as InfraLayer {
+    component "Database (MySQL/PostgreSQL)\nvia Eloquent + Migrations" as Database
+    component "S3/Storage\n(S3ImageStorageService,\nPendingImageWorkflowService)" as Storage
+    component "Socket Server\n(socket-server.js)" as SocketServer
+  }
+}
+
+Client --> Routes
+Routes --> Middleware
+Middleware --> Controllers
+Controllers --> Requests
+Controllers --> Services
+Services --> RepoContracts
+RepoContracts --> Repos
+Repos --> Models
+Models --> Database
+Services --> ServiceExceptions
+Controllers --> ServiceExceptions
+Services --> Storage
+Services --> SocketServer
+
+note right of BackendLaravel
+Flow chính:
+Client -> Route -> Middleware -> Controller
+-> FormRequest -> Service -> Repository
+-> Model -> Database
+
+Lỗi nghiệp vụ:
+Service throw ServiceException/AuthServiceException
+Controller map thành HTTP response.
+end note
+@enduml
+```
+
 ## Hướng tiếp theo để hoàn thiện
 
 - Bổ sung unit test cho `AuthService`, `AccountService`, `GuestService`, `DishService`, `TableService`.
