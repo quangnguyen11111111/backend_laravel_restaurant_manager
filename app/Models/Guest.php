@@ -25,6 +25,11 @@ class Guest extends Model
     // Constants for role
     const ROLE_GUEST = 'Guest';
 
+    public function getRoleAttribute(): string
+    {
+        return self::ROLE_GUEST;
+    }
+
     /**
      * Get the table associated with the guest
      */

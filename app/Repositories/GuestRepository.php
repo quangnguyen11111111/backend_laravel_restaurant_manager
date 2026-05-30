@@ -14,6 +14,11 @@ class GuestRepository implements GuestRepositoryInterface
         return Table::query()->where('number', $tableNumber)->first();
     }
 
+    public function findById(int $id): ?Guest
+    {
+        return Guest::query()->find($id);
+    }
+
     public function create(array $attributes): Guest
     {
         return Guest::query()->create($attributes);

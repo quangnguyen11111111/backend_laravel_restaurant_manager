@@ -55,42 +55,49 @@ class DishService
     }
 
     /**
-     * Lấy danh sách dishes cho user (theo category)
+     * Lấy danh sách dishes cho user (theo category hoặc tất cả)
      * @param array<string, mixed> $validated
      * @return array<string, mixed>
      */
     public function indexForUser(array $validated): array
     {
-        $categoryId = (int) ($validated['category_id'] ?? 0);
         $page = (int) ($validated['page'] ?? 1);
+        $categoryId = $validated['category_id'] ?? null;
 
-        if ($categoryId <= 0) {
-            throw new ServiceException('category_id không hợp lệ', 400);
-        }
+        if ($categoryId === null || $categoryId == 0) {
+            $paginatedDishes = $this->dishRepository->getPaginatedForUser(
+                self::INDEX_PER_PAGE,
+                $page
+            );
+        } else {
+            $categoryId = (int) $categoryId;
 
-        $category = Category::with('children')
-            ->find($categoryId);
+            if ($categoryId < 0) {
+                throw new ServiceException('category_id không hợp lệ', 400);
+            }
 
-        if (!$category) {
-            throw new ServiceException('Danh mục không tồn tại', 404);
-        }
+            $category = Category::with('children')
+                ->find($categoryId);
 
-        // Lấy tất cả category_id 
-        $childrenIds = $category->getAllChildrenIds();
+            if (!$category) {
+                throw new ServiceException('Danh mục không tồn tại', 404);
+            }
 
-        $categoryIds = array_merge(
-            [$category->id],
-            $childrenIds
-        );
+            // Lấy tất cả category_id
+            $childrenIds = $category->getAllChildrenIds();
 
-        // Lấy dishes theo category_id (bao gồm cả category con)
-        $paginatedDishes = $this->dishRepository
+            $categoryIds = array_merge(
+                [$category->id],
+                $childrenIds
+            );
 
-            ->getPaginatedByCategoryId(
+            // Lấy dishes theo category_id (bao gồm cả category con)
+            $paginatedDishes = $this->dishRepository->getPaginatedByCategoryId(
                 $categoryIds,
                 self::INDEX_PER_PAGE,
                 $page
             );
+        }
 
         $dishes = collect($paginatedDishes->items())
             ->map(fn(Dish $dish): array => $this->mapDishForUser($dish))
@@ -384,6 +391,7 @@ class DishService
             'price' => $dish->price,
             'description' => $dish->description,
             'image' => $dish->image,
+            'status' => $dish->status,
         ];
     }
 

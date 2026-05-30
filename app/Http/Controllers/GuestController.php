@@ -124,7 +124,7 @@ class GuestController extends Controller
             }
 
             $now = time();
-            $accessExp = $now + $this->parseExpiry(config('auth.guest_access_token_expires_in', config('auth.access_token_expires_in', '1d')));
+            $accessExp = $now + $this->parseExpiry((string) config('auth.guest_access_token_expires_in', config('auth.access_token_expires_in', '1d')));
             $newAccess = [
                 'userId' => $guest->id,
                 'role' => \App\Models\Guest::ROLE_GUEST,

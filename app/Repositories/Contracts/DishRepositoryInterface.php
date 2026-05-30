@@ -13,6 +13,11 @@ interface DishRepositoryInterface
     public function getPaginatedForAdmin(int $perPage, int $page): LengthAwarePaginator;
 
     /**
+     * Lấy danh sách dishes cho user (tất cả)
+     */
+    public function getPaginatedForUser(int $perPage, int $page): LengthAwarePaginator;
+
+    /**
      * Lấy danh sách dishes cho user (theo category)
      */
     public function getPaginatedByCategoryId(array $categoryIds, int $perPage, int $page): LengthAwarePaginator;
@@ -23,6 +28,8 @@ interface DishRepositoryInterface
     public function getPaginatedOrderByCreatedAtDesc(int $perPage, int $page): LengthAwarePaginator;
 
     public function findById(int $id): ?Dish;
+
+    public function findByIdOrFail(int $id): Dish;
 
     public function create(array $attributes): Dish;
 

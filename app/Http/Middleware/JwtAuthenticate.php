@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Account;
+use App\Models\Guest;
 use Closure;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
@@ -40,19 +41,33 @@ class JwtAuthenticate
                 ], 401);
             }
 
-            // Find account and set to request
-            $account = Account::find($decoded->userId);
+            $role = $decoded->role ?? null;
 
-            if (!$account) {
-                return response()->json([
-                    'message' => 'Tài khoản không tồn tại'
-                ], 401);
+            if ($role === Guest::ROLE_GUEST) {
+                $guest = Guest::find($decoded->userId);
+                if (!$guest) {
+                    return response()->json([
+                        'message' => 'Guest không tồn tại'
+                    ], 401);
+                }
+
+                $request->setUserResolver(function () use ($guest) {
+                    return $guest;
+                });
+            } else {
+                // Find account and set to request
+                $account = Account::find($decoded->userId);
+
+                if (!$account) {
+                    return response()->json([
+                        'message' => 'Tài khoản không tồn tại'
+                    ], 401);
+                }
+
+                $request->setUserResolver(function () use ($account) {
+                    return $account;
+                });
             }
-
-            // Set user to request for later use
-            $request->setUserResolver(function () use ($account) {
-                return $account;
-            });
 
             // Also set decoded token for reference
             $request->attributes->set('decodedAccessToken', $decoded);

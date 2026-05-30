@@ -23,7 +23,7 @@ class GetDishListRequest extends BaseApiRequest
     {
         return [
             'page' => ['nullable', 'integer', 'min:1'],
-            'category_id' => ['nullable', 'integer', 'min:1'],
+            'category_id' => ['nullable', 'integer', 'min:0'],
         ];
     }
 

@@ -148,7 +148,7 @@ Route::prefix('guests')->group(function () {
     Route::post('/auth/logout', [GuestController::class, 'logout'])->middleware('jwt.auth');
     Route::post('/auth/refresh-token', [GuestController::class, 'refreshToken']);
 
-    Route::middleware(['jwt.auth', 'role:Guest'])->group(function () {
+    Route::middleware(['jwt.auth', 'role:Guest,Owner,Employee',])->group(function () {
         Route::post('/orders', [GuestController::class, 'createOrders']);
         Route::get('/orders', [GuestController::class, 'getOrders']);
     });

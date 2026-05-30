@@ -4,22 +4,31 @@ namespace App\Services;
 
 use App\Exceptions\ServiceException;
 use App\Models\Dish;
-use App\Models\DishSnapshot;
-use App\Models\Guest;
 use App\Models\Order;
 use App\Models\Table;
+use App\Repositories\Contracts\DishRepositoryInterface;
+use App\Repositories\Contracts\DishSnapshotRepositoryInterface;
+use App\Repositories\Contracts\GuestRepositoryInterface;
+use App\Repositories\Contracts\OrderRepositoryInterface;
+use App\Repositories\Contracts\TableRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 
 class OrderService
 {
-    public function __construct() {}
+    public function __construct(
+        private readonly GuestRepositoryInterface $guestRepository,
+        private readonly TableRepositoryInterface $tableRepository,
+        private readonly DishRepositoryInterface $dishRepository,
+        private readonly DishSnapshotRepositoryInterface $dishSnapshotRepository,
+        private readonly OrderRepositoryInterface $orderRepository
+    ) {}
 
     public function createOrders(int $orderHandlerId, array $body): array
     {
         $guestId = $body['guestId'];
         $orders = $body['orders'];
 
-        $guest = Guest::query()->find($guestId);
+        $guest = $this->guestRepository->findById($guestId);
         if (!$guest) {
             throw new ServiceException('Guest không tồn tại', 400);
         }
@@ -27,7 +36,7 @@ class OrderService
             throw new ServiceException('Bàn gắn liền với khách hàng này đã bị xóa, vui lòng chọn khách hàng khác!', 400);
         }
 
-        $table = Table::query()->where('number', $guest->table_number)->first();
+        $table = $this->tableRepository->findByNumber($guest->table_number);
         if (!$table) {
             throw new ServiceException('Bàn không tồn tại', 400);
         }
@@ -38,7 +47,7 @@ class OrderService
         $created = DB::transaction(function () use ($orders, $guestId, $orderHandlerId, $guest) {
             $records = [];
             foreach ($orders as $order) {
-                $dish = Dish::query()->find($order['dishId']);
+                $dish = $this->dishRepository->findById($order['dishId']);
                 if (!$dish) {
                     throw new ServiceException('Món không tồn tại', 400);
                 }
@@ -48,7 +57,7 @@ class OrderService
                 if ($dish->status === Dish::STATUS_HIDDEN) {
                     throw new ServiceException("Món {$dish->name} không thể đặt", 400);
                 }
-                $dishSnapshot = DishSnapshot::query()->create([
+                $dishSnapshot = $this->dishSnapshotRepository->create([
                     'description' => $dish->description,
                     'image' => $dish->image,
                     'name' => $dish->name,
@@ -56,7 +65,7 @@ class OrderService
                     'dish_id' => $dish->id,
                     'status' => $dish->status,
                 ]);
-                $orderRecord = Order::query()->create([
+                $orderRecord = $this->orderRepository->create([
                     'dish_snapshot_id' => $dishSnapshot->id,
                     'guest_id' => $guestId,
                     'quantity' => $order['quantity'],
@@ -64,7 +73,7 @@ class OrderService
                     'order_handler_id' => $orderHandlerId,
                     'status' => Order::STATUS_PENDING,
                 ]);
-                $records[] = $orderRecord->load(['dishSnapshot', 'guest']);
+                $records[] = $this->orderRepository->loadRelations($orderRecord, ['dishSnapshot', 'guest']);
             }
             return $records;
         });
@@ -76,14 +85,14 @@ class OrderService
     public function guestCreateOrders(int $guestId, array $orders): array
     {
         $created = DB::transaction(function () use ($orders, $guestId) {
-            $guest = Guest::query()->find($guestId);
+            $guest = $this->guestRepository->findById($guestId);
             if (!$guest) {
-                throw new ServiceException('Guest không tồn tại', 400);
+                throw new ServiceException("Guest không tồn tại ", 400);
             }
             if ($guest->table_number === null) {
                 throw new ServiceException('Bàn của bạn đã bị xóa, vui lòng đăng xuất và đăng nhập lại một bàn mới', 400);
             }
-            $table = Table::query()->where('number', $guest->table_number)->first();
+            $table = $this->tableRepository->findByNumber($guest->table_number);
             if (!$table) {
                 throw new ServiceException('Bàn không tồn tại', 400);
             }
@@ -95,7 +104,7 @@ class OrderService
             }
             $records = [];
             foreach ($orders as $order) {
-                $dish = Dish::query()->find($order['dishId']);
+                $dish = $this->dishRepository->findById($order['dishId']);
                 if (!$dish) {
                     throw new ServiceException('Món không tồn tại', 400);
                 }
@@ -105,7 +114,7 @@ class OrderService
                 if ($dish->status === Dish::STATUS_HIDDEN) {
                     throw new ServiceException("Món {$dish->name} không thể đặt", 400);
                 }
-                $dishSnapshot = DishSnapshot::query()->create([
+                $dishSnapshot = $this->dishSnapshotRepository->create([
                     'description' => $dish->description,
                     'image' => $dish->image,
                     'name' => $dish->name,
@@ -113,7 +122,7 @@ class OrderService
                     'dish_id' => $dish->id,
                     'status' => $dish->status,
                 ]);
-                $orderRecord = Order::query()->create([
+                $orderRecord = $this->orderRepository->create([
                     'dish_snapshot_id' => $dishSnapshot->id,
                     'guest_id' => $guestId,
                     'quantity' => $order['quantity'],
@@ -121,7 +130,7 @@ class OrderService
                     'order_handler_id' => null,
                     'status' => Order::STATUS_PENDING,
                 ]);
-                $records[] = $orderRecord->load(['dishSnapshot', 'guest']);
+                $records[] = $this->orderRepository->loadRelations($orderRecord, ['dishSnapshot', 'guest']);
             }
             return $records;
         });
@@ -131,35 +140,34 @@ class OrderService
 
     public function guestGetOrders(int $guestId): array
     {
-        $orders = Order::query()->where('guest_id', $guestId)->with(['dishSnapshot', 'orderHandler', 'guest'])->orderBy('created_at', 'desc')->get();
-        return $orders->toArray();
+        return $this->orderRepository
+            ->getByGuestIdWithRelations($guestId, ['dishSnapshot', 'orderHandler', 'guest'])
+            ->toArray();
     }
 
     public function getOrders(?string $fromDate = null, ?string $toDate = null)
     {
-        $query = Order::query()->with(['dishSnapshot', 'orderHandler', 'guest'])->orderBy('created_at', 'desc');
-        if (!empty($fromDate)) {
-            $query->where('created_at', '>=', $fromDate);
-        }
-        if (!empty($toDate)) {
-            $query->where('created_at', '<=', $toDate);
-        }
-        return $query->get()->toArray();
+        return $this->orderRepository
+            ->getByFilters($fromDate, $toDate, ['dishSnapshot', 'orderHandler', 'guest'])
+            ->toArray();
     }
 
     public function getOrderDetail(int $orderId)
     {
-        return Order::query()->with(['dishSnapshot', 'orderHandler', 'guest', 'table'])->findOrFail($orderId);
+        return $this->orderRepository->findByIdOrFailWithRelations(
+            $orderId,
+            ['dishSnapshot', 'orderHandler', 'guest', 'table']
+        );
     }
 
     public function updateOrder(int $orderId, array $body)
     {
         return DB::transaction(function () use ($orderId, $body) {
-            $order = Order::query()->with('dishSnapshot')->findOrFail($orderId);
+            $order = $this->orderRepository->findByIdOrFailWithRelations($orderId, ['dishSnapshot']);
             $dishSnapshotId = $order->dish_snapshot_id;
-            if (array_key_exists('dishId', $body) && $order->dishSnapshot->dish_id !== $body['dishId']) {
-                $dish = Dish::query()->findOrFail($body['dishId']);
-                $dishSnapshot = DishSnapshot::query()->create([
+            if (array_key_exists('dishId', $body) && $order->dishSnapshot?->dish_id !== $body['dishId']) {
+                $dish = $this->dishRepository->findByIdOrFail($body['dishId']);
+                $dishSnapshot = $this->dishSnapshotRepository->create([
                     'description' => $dish->description,
                     'image' => $dish->image,
                     'name' => $dish->name,
@@ -169,28 +177,41 @@ class OrderService
                 ]);
                 $dishSnapshotId = $dishSnapshot->id;
             }
-            $order->status = $body['status'];
-            $order->dish_snapshot_id = $dishSnapshotId;
-            $order->quantity = $body['quantity'];
-            $order->order_handler_id = $body['orderHandlerId'];
-            $order->save();
-            return $order->load(['dishSnapshot', 'orderHandler', 'guest']);
+            $updated = $this->orderRepository->update($order, [
+                'status' => $body['status'],
+                'dish_snapshot_id' => $dishSnapshotId,
+                'quantity' => $body['quantity'],
+                'order_handler_id' => $body['orderHandlerId'],
+            ]);
+
+            if (!$updated) {
+                throw new ServiceException('Không thể cập nhật đơn hàng.', 500);
+            }
+
+            return $this->orderRepository->loadRelations($order, ['dishSnapshot', 'orderHandler', 'guest']);
         });
     }
 
     public function payOrders(int $guestId, int $orderHandlerId)
     {
-        $orders = Order::query()->where('guest_id', $guestId)->whereIn('status', [Order::STATUS_PENDING, Order::STATUS_PROCESSING, Order::STATUS_DELIVERED])->get();
+        $orders = $this->orderRepository->getByGuestIdAndStatuses(
+            $guestId,
+            [Order::STATUS_PENDING, Order::STATUS_PROCESSING, Order::STATUS_DELIVERED]
+        );
         if ($orders->isEmpty()) {
             throw new ServiceException('Không có hóa đơn nào cần thanh toán', 400);
         }
-        DB::transaction(function () use ($orders, $orderHandlerId) {
-            $ids = $orders->pluck('id')->toArray();
-            Order::query()->whereIn('id', $ids)->update([
+        $orderIds = $orders->pluck('id')->toArray();
+
+        DB::transaction(function () use ($orderIds, $orderHandlerId) {
+            $this->orderRepository->updateByIds($orderIds, [
                 'status' => Order::STATUS_PAID,
                 'order_handler_id' => $orderHandlerId,
             ]);
         });
-        return Order::query()->whereIn('id', $orders->pluck('id')->toArray())->with(['dishSnapshot', 'orderHandler', 'guest'])->orderBy('created_at', 'desc')->get()->toArray();
+
+        return $this->orderRepository
+            ->getByIdsWithRelations($orderIds, ['dishSnapshot', 'orderHandler', 'guest'])
+            ->toArray();
     }
 }

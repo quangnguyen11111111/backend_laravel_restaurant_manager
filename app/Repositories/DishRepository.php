@@ -20,6 +20,18 @@ class DishRepository implements DishRepositoryInterface
     }
 
     /**
+     * Lấy danh sách dishes cho user (tất cả)
+     */
+    public function getPaginatedForUser(int $perPage, int $page): LengthAwarePaginator
+    {
+        return Dish::query()
+            ->where('status', '!=', Dish::STATUS_HIDDEN)
+            ->with('category')
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage, ['*'], 'page', $page);
+    }
+
+    /**
      * Lấy danh sách dishes cho user (theo category)
      */
     public function getPaginatedByCategoryId(array $categoryIds, int $perPage, int $page): LengthAwarePaginator
@@ -45,6 +57,11 @@ class DishRepository implements DishRepositoryInterface
     public function findById(int $id): ?Dish
     {
         return Dish::query()->find($id);
+    }
+
+    public function findByIdOrFail(int $id): Dish
+    {
+        return Dish::query()->findOrFail($id);
     }
 
     public function create(array $attributes): Dish

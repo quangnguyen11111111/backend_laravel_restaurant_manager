@@ -10,6 +10,8 @@ interface GuestRepositoryInterface
 {
     public function findTableByNumber(int $tableNumber): ?Table;
 
+    public function findById(int $id): ?Guest;
+
     public function create(array $attributes): Guest;
 
     public function getByFilters(?string $fromDate, ?string $toDate): Collection;
