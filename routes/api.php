@@ -7,6 +7,9 @@ use App\Http\Controllers\DishController;
 use App\Http\Controllers\TableController;
 use App\Http\Controllers\GuestController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\ReservationController;
+use App\Http\Controllers\SessionController;
+use App\Http\Controllers\TableCapacityController;
 use App\Http\Controllers\SocketController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -165,7 +168,31 @@ Route::prefix('orders')->middleware(['jwt.auth', 'role:Owner,Employee'])->group(
     Route::get('/', [OrderController::class, 'index']);
     Route::get('/{orderId}', [OrderController::class, 'show'])->whereNumber('orderId');
     Route::put('/{orderId}', [OrderController::class, 'update'])->whereNumber('orderId');
+    Route::put('/session/{orderId}', [OrderController::class, 'updateSession'])->whereNumber('orderId');
     Route::post('/pay', [OrderController::class, 'pay']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Reservation & Capacity Routes
+|--------------------------------------------------------------------------
+*/
+Route::prefix('reservations')->group(function () {
+    Route::post('/', [ReservationController::class, 'store']); // Create reservation (web booking)
+    Route::post('/{orderId}/check-in', [ReservationController::class, 'checkIn'])
+        ->middleware(['jwt.auth', 'role:Owner,Employee'])->whereNumber('orderId');
+});
+
+Route::get('/capacity/check', [TableCapacityController::class, 'checkCapacity']);
+
+/*
+|--------------------------------------------------------------------------
+| Session Routes
+|--------------------------------------------------------------------------
+*/
+Route::prefix('sessions')->middleware('jwt.auth')->group(function () {
+    Route::post('/host-open', [SessionController::class, 'hostOpen'])->middleware('role:Guest,Owner,Employee');
+    Route::post('/guest-join', [SessionController::class, 'guestJoin'])->middleware('role:Guest');
 });
 
 /*

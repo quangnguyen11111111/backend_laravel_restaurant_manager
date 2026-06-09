@@ -57,6 +57,16 @@ class OrderController extends Controller
         ]);
     }
 
+    public function updateSession($orderId, HttpRequest $request): JsonResponse
+    {
+        $status = $request->input('status');
+        $result = $this->orderService->updateSession((int) $orderId, $status);
+        return response()->json([
+            'message' => 'Cập nhật phiên làm việc thành công',
+            'data' => $result,
+        ]);
+    }
+
     public function pay(HttpRequest $request): JsonResponse
     {
         $guestId = $request->input('guestId');

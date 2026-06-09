@@ -14,6 +14,8 @@ interface GuestRepositoryInterface
 
     public function create(array $attributes): Guest;
 
+    public function update(Guest $guest, array $attributes): bool;
+
     public function getByFilters(?string $fromDate, ?string $toDate): Collection;
 
     public function clearRefreshTokensByTableNumber(int $tableNumber): int;

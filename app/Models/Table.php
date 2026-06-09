@@ -28,10 +28,12 @@ class Table extends Model
     const STATUS_AVAILABLE = 'Available';
     const STATUS_HIDDEN = 'Hidden';
     const STATUS_RESERVED = 'Reserved';
+    const STATUS_OCCUPIED = 'Occupied';
     const STATUS_VALUES = [
         self::STATUS_AVAILABLE,
         self::STATUS_HIDDEN,
         self::STATUS_RESERVED,
+        self::STATUS_OCCUPIED,
     ];
 
     /**
@@ -39,14 +41,6 @@ class Table extends Model
      */
     public function orders()
     {
-        // return $this->hasMany(Order::class, 'table_number', 'number');
-    }
-
-    /**
-     * Get the guests at the table
-     */
-    public function guests()
-    {
-        return $this->hasMany(Guest::class, 'table_number', 'number');
+        return $this->hasMany(Order::class, 'table_number', 'number');
     }
 }

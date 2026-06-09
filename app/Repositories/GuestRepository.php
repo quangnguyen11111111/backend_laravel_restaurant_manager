@@ -24,6 +24,11 @@ class GuestRepository implements GuestRepositoryInterface
         return Guest::query()->create($attributes);
     }
 
+    public function update(Guest $guest, array $attributes): bool
+    {
+        return $guest->update($attributes);
+    }
+
     public function getByFilters(?string $fromDate, ?string $toDate): Collection
     {
         $query = Guest::query()->orderBy('created_at', 'desc');

@@ -226,6 +226,52 @@ io.on("connection", async (socket) => {
                 });
             }
         });
+        /**
+         * Event: Cập nhật đơn hàng (gửi tới khách)
+         * Client gọi: socket.emit('update-order', { guestId, data })
+         */
+        socket.on("update-order", async ({ guestId, data }) => {
+            try {
+                const response = await axios.get(
+                    `${LARAVEL_API_URL}/sockets/find/${guestId}`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                if (response.data.socket_id) {
+                    io.to(response.data.socket_id).emit("update-order", data);
+                }
+                // Broadcast cho tất cả quản lý để cập nhật giao diện
+                io.to(MANAGER_ROOM).emit("update-order", data);
+            } catch (error) {
+                console.error("Update order broadcast failed:", error.message);
+            }
+        });
+
+        /**
+         * Event: Thanh toán (gửi tới khách)
+         * Client gọi: socket.emit('payment', { guestId, data })
+         */
+        socket.on("payment", async ({ guestId, data }) => {
+            try {
+                const response = await axios.get(
+                    `${LARAVEL_API_URL}/sockets/find/${guestId}`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                if (response.data.socket_id) {
+                    io.to(response.data.socket_id).emit("payment", data);
+                }
+                io.to(MANAGER_ROOM).emit("payment", data);
+            } catch (error) {
+                console.error("Payment broadcast failed:", error.message);
+            }
+        });
+
+        /**
+         * Event: Khách hàng đặt món mới
+         * Client gọi: socket.emit('new-order', data)
+         */
+        socket.on("new-order", (data) => {
+            io.to(MANAGER_ROOM).emit("new-order", data);
+        });
     } catch (error) {
         console.error("Connection error:", error.message);
     }

@@ -11,7 +11,7 @@ class Guest extends Model
 
     protected $fillable = [
         'name',
-        'table_number',
+        'order_id',
         'refresh_token',
         'refresh_token_expires_at',
     ];
@@ -22,6 +22,8 @@ class Guest extends Model
         'updated_at' => 'datetime',
     ];
 
+    protected $appends = ['role'];
+
     // Constants for role
     const ROLE_GUEST = 'Guest';
 
@@ -31,18 +33,18 @@ class Guest extends Model
     }
 
     /**
-     * Get the table associated with the guest
+     * Get the order associated with the guest
      */
-    public function table()
+    public function order()
     {
-        return $this->belongsTo(Table::class, 'table_number', 'number');
+        return $this->belongsTo(Order::class);
     }
 
     /**
-     * Get the orders for the guest
+     * Get the order details created by the guest
      */
-    public function orders()
+    public function orderDetails()
     {
-        // return $this->hasMany(Order::class);
+        return $this->hasMany(OrderDetail::class);
     }
 }

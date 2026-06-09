@@ -57,11 +57,11 @@ class OrderRepository implements OrderRepositoryInterface
         }
 
         if (!empty($fromDate)) {
-            $query->where('created_at', '>=', $fromDate);
+            $query->where('created_at', '>=', \Carbon\Carbon::parse($fromDate));
         }
 
         if (!empty($toDate)) {
-            $query->where('created_at', '<=', $toDate);
+            $query->where('created_at', '<=', \Carbon\Carbon::parse($toDate));
         }
 
         return $query->get();

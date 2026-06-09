@@ -9,42 +9,45 @@ class Order extends Model
 {
     use HasFactory;
 
-    public const STATUS_PENDING = 'Pending';
-    public const STATUS_PROCESSING = 'Processing';
-    public const STATUS_DELIVERED = 'Delivered';
+    public const STATUS_PENDING_ARRIVAL = 'Pending_Arrival';
+    public const STATUS_ACTIVE = 'Active';
     public const STATUS_PAID = 'Paid';
+    public const STATUS_CANCELLED = 'Cancelled';
 
     protected $fillable = [
-        'dish_snapshot_id',
-        'guest_id',
-        'quantity',
         'table_number',
-        'order_handler_id',
+        'guest_id',
+        'guest_count',
+        'session_pin',
+        'customer_name',
+        'customer_phone',
+        'reservation_time',
         'status',
     ];
 
     protected $casts = [
+        'reservation_time' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
 
-    public function dishSnapshot()
-    {
-        return $this->belongsTo(DishSnapshot::class, 'dish_snapshot_id');
-    }
-
     public function guest()
     {
-        return $this->belongsTo(Guest::class);
+        return $this->belongsTo(Guest::class, 'guest_id');
     }
 
-    public function orderHandler()
+    public function guests()
     {
-        return $this->belongsTo(Account::class, 'order_handler_id');
+        return $this->hasMany(Guest::class);
     }
 
     public function table()
     {
         return $this->belongsTo(Table::class, 'table_number', 'number');
+    }
+
+    public function orderDetails()
+    {
+        return $this->hasMany(OrderDetail::class);
     }
 }

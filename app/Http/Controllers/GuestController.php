@@ -46,7 +46,7 @@ class GuestController extends Controller
 
             $guest = $this->guestRepository->create([
                 'name' => $validated['name'],
-                'table_number' => $validated['tableNumber'],
+                // Guest is not linked to an order until they host-open or guest-join
             ]);
 
             $now = time();
@@ -76,6 +76,10 @@ class GuestController extends Controller
             $guest->refresh_token_expires_at = date('Y-m-d H:i:s', $refreshExp);
             $guest->save();
 
+            $activeOrder = \App\Models\Order::where('table_number', $validated['tableNumber'])
+                ->where('status', \App\Models\Order::STATUS_ACTIVE)
+                ->first();
+
             return response()->json([
                 'message' => 'Đăng nhập thành công',
                 'data' => [
@@ -83,10 +87,11 @@ class GuestController extends Controller
                         'id' => $guest->id,
                         'name' => $guest->name,
                         'role' => \App\Models\Guest::ROLE_GUEST,
-                        'tableNumber' => $guest->table_number,
+                        'orderId' => $guest->order_id,
                         'createdAt' => $guest->created_at,
                         'updatedAt' => $guest->updated_at,
                     ],
+                    'hasActiveSession' => $activeOrder ? true : false,
                     'accessToken' => $accessToken,
                     'refreshToken' => $refreshToken,
                 ],
