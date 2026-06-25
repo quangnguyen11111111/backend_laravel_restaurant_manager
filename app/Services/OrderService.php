@@ -176,8 +176,13 @@ class OrderService
             $detail = $this->orderDetailRepository->findById($orderId);
             if (!$detail) throw new ServiceException('Chi tiết đơn hàng không tồn tại', 404);
 
+            if (isset($body['status']) && $body['status'] !== $detail->status) {
+                $status = $body['status'];
+                $detail->state()->transitionTo($status, $detail);
+            }
+
             $this->orderDetailRepository->update($detail, [
-                'status' => $body['status'] ?? $detail->status,
+                'status' => $detail->status,
                 'quantity' => $body['quantity'] ?? $detail->quantity,
                 'order_handler_id' => $body['orderHandlerId'] ?? $detail->order_handler_id,
             ]);
@@ -192,7 +197,11 @@ class OrderService
             $order = $this->orderRepository->findById($orderId);
             if (!$order) throw new ServiceException('Đơn hàng không tồn tại', 404);
 
-            $this->orderRepository->update($order, ['status' => $status]);
+            if ($status !== $order->status) {
+                $order->state()->transitionTo($status, $order);
+            }
+
+            $this->orderRepository->update($order, ['status' => $order->status]);
             return $order->load(['orderDetails.dish', 'orderDetails.guest', 'guest', 'table']);
         });
     }
@@ -207,8 +216,9 @@ class OrderService
         $order = $this->orderRepository->findByIdOrFailWithRelations($guest->order_id, ['orderDetails', 'table']);
 
         DB::transaction(function () use ($order, $orderHandlerId) {
+            $order->state()->transitionTo(Order::STATUS_PAID, $order);
             $this->orderRepository->update($order, [
-                'status' => Order::STATUS_PAID,
+                'status' => $order->status,
             ]);
 
             if ($order->table) {

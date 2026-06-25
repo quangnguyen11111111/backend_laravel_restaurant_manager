@@ -46,4 +46,15 @@ class OrderDetail extends Model
     {
         return $this->belongsTo(Account::class, 'order_handler_id');
     }
+
+    public function state(): \App\Patterns\State\OrderDetail\OrderDetailState
+    {
+        return match($this->status) {
+            self::STATUS_PENDING => new \App\Patterns\State\OrderDetail\PendingDetailState(),
+            self::STATUS_PROCESSING => new \App\Patterns\State\OrderDetail\ProcessingDetailState(),
+            self::STATUS_DELIVERED => new \App\Patterns\State\OrderDetail\DeliveredDetailState(),
+            self::STATUS_CANCELLED => new \App\Patterns\State\OrderDetail\CancelledDetailState(),
+            default => throw new \Exception('Invalid order detail status: ' . $this->status),
+        };
+    }
 }

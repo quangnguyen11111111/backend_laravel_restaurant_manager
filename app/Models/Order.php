@@ -50,4 +50,15 @@ class Order extends Model
     {
         return $this->hasMany(OrderDetail::class);
     }
+
+    public function state(): \App\Patterns\State\Order\OrderState
+    {
+        return match($this->status) {
+            self::STATUS_PENDING_ARRIVAL => new \App\Patterns\State\Order\PendingArrivalOrderState(),
+            self::STATUS_ACTIVE => new \App\Patterns\State\Order\ActiveOrderState(),
+            self::STATUS_PAID => new \App\Patterns\State\Order\PaidOrderState(),
+            self::STATUS_CANCELLED => new \App\Patterns\State\Order\CancelledOrderState(),
+            default => throw new \Exception('Invalid order status: ' . $this->status),
+        };
+    }
 }
