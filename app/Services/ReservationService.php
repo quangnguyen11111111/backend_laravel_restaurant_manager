@@ -11,18 +11,23 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
+use App\Repositories\Contracts\GuestRepositoryInterface;
+use App\Services\GuestService;
+
 class ReservationService
 {
     public function __construct(
         private readonly OrderRepositoryInterface $orderRepository,
-        private readonly TableRepositoryInterface $tableRepository
+        private readonly TableRepositoryInterface $tableRepository,
+        private readonly GuestRepositoryInterface $guestRepository,
+        private readonly GuestService $guestService
     ) {}
 
     public function createReservation(array $data)
     {
         return DB::transaction(function () use ($data) {
             $pin = strtoupper(Str::random(4));
-            return $this->orderRepository->create([
+            $order = $this->orderRepository->create([
                 'guest_count' => $data['guest_count'],
                 'reservation_time' => $data['reservation_time'],
                 'customer_name' => $data['customer_name'],
@@ -30,6 +35,31 @@ class ReservationService
                 'session_pin' => $pin,
                 'status' => Order::STATUS_PENDING_ARRIVAL,
             ]);
+
+            // Tạo guest
+            $guest = $this->guestRepository->create([
+                'name' => $data['customer_name'],
+                'order_id' => $order->id,
+            ]);
+
+            $this->orderRepository->update($order, [
+                'guest_id' => $guest->id,
+            ]);
+
+            // Sinh token
+            $tokens = $this->guestService->generateTokens($guest);
+
+            return [
+                'order' => $order,
+                'guest' => [
+                    'id' => $guest->id,
+                    'name' => $guest->name,
+                    'role' => \App\Models\Guest::ROLE_GUEST,
+                    'orderId' => $guest->order_id,
+                ],
+                'accessToken' => $tokens['accessToken'],
+                'refreshToken' => $tokens['refreshToken'],
+            ];
         });
     }
 

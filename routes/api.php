@@ -148,6 +148,7 @@ Route::prefix('tables')->group(function () {
 */
 Route::prefix('guests')->group(function () {
     Route::post('/auth/login', [GuestController::class, 'login']);
+    Route::post('/auth/recover', [GuestController::class, 'recover']);
     Route::post('/auth/logout', [GuestController::class, 'logout'])->middleware('jwt.auth');
     Route::post('/auth/refresh-token', [GuestController::class, 'refreshToken']);
 

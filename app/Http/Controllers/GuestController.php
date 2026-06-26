@@ -49,32 +49,9 @@ class GuestController extends Controller
                 // Guest is not linked to an order until they host-open or guest-join
             ]);
 
-            $now = time();
-            $accessExp = $now + $this->parseExpiry(config('auth.guest_access_token_expires_in', config('auth.access_token_expires_in', '1d')));
-            $refreshExp = $now + $this->parseExpiry(config('auth.guest_refresh_token_expires_in', config('auth.refresh_token_expires_in', '7d')));
-
-            $accessPayload = [
-                'userId' => $guest->id,
-                'role' => \App\Models\Guest::ROLE_GUEST,
-                'tokenType' => 'AccessToken',
-                'iat' => $now,
-                'exp' => $accessExp,
-            ];
-
-            $refreshPayload = [
-                'userId' => $guest->id,
-                'role' => \App\Models\Guest::ROLE_GUEST,
-                'tokenType' => 'RefreshToken',
-                'iat' => $now,
-                'exp' => $refreshExp,
-            ];
-
-            $accessToken = JWT::encode($accessPayload, config('auth.access_token_secret'), 'HS256');
-            $refreshToken = JWT::encode($refreshPayload, config('auth.refresh_token_secret'), 'HS256');
-
-            $guest->refresh_token = $refreshToken;
-            $guest->refresh_token_expires_at = date('Y-m-d H:i:s', $refreshExp);
-            $guest->save();
+            $tokens = $this->guestService->generateTokens($guest);
+            $accessToken = $tokens['accessToken'];
+            $refreshToken = $tokens['refreshToken'];
 
             $activeOrder = \App\Models\Order::where('table_number', $validated['tableNumber'])
                 ->where('status', \App\Models\Order::STATUS_ACTIVE)
@@ -186,17 +163,56 @@ class GuestController extends Controller
         ]);
     }
 
-    private function parseExpiry(string $expiry): int
+    public function recover(Request $request): JsonResponse
     {
-        $unit = substr($expiry, -1);
-        $value = (int) substr($expiry, 0, -1);
+        $request->validate([
+            'customer_phone' => 'required|string',
+            'session_pin' => 'required|string',
+        ]);
 
-        return match ($unit) {
-            's' => $value,
-            'm' => $value * 60,
-            'h' => $value * 3600,
-            'd' => $value * 86400,
-            default => (int) $expiry,
-        };
+        try {
+            $order = \App\Models\Order::query()
+                ->where('customer_phone', $request->input('customer_phone'))
+                ->where('session_pin', $request->input('session_pin'))
+                ->where('status', '!=', \App\Models\Order::STATUS_CANCELLED)
+                ->latest()
+                ->first();
+
+            if (!$order) {
+                return response()->json(['message' => 'Không tìm thấy đơn hàng nào khớp với thông tin'], 404);
+            }
+
+            // Find guest or create if not exists (for backward compatibility)
+            $guest = \App\Models\Guest::query()
+                ->where('order_id', $order->id)
+                ->first();
+
+            if (!$guest) {
+                $guest = $this->guestRepository->create([
+                    'name' => $order->customer_name,
+                    'order_id' => $order->id,
+                ]);
+            }
+
+            $tokens = $this->guestService->generateTokens($guest);
+
+            return response()->json([
+                'message' => 'Phục hồi phiên thành công',
+                'data' => [
+                    'guest' => [
+                        'id' => $guest->id,
+                        'name' => $guest->name,
+                        'role' => \App\Models\Guest::ROLE_GUEST,
+                        'orderId' => $guest->order_id,
+                        'createdAt' => $guest->created_at,
+                        'updatedAt' => $guest->updated_at,
+                    ],
+                    'accessToken' => $tokens['accessToken'],
+                    'refreshToken' => $tokens['refreshToken'],
+                ],
+            ]);
+        } catch (Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
     }
 }

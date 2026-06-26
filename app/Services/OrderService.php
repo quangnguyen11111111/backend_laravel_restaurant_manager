@@ -89,8 +89,8 @@ class OrderService
         }
 
         $order = $this->orderRepository->findByIdOrFailWithRelations($guest->order_id);
-        if ($order->status !== Order::STATUS_ACTIVE) {
-            throw new ServiceException('Session đã đóng, không thể đặt thêm món', 400);
+        if (!in_array($order->status, [Order::STATUS_ACTIVE, Order::STATUS_PENDING_ARRIVAL])) {
+            throw new ServiceException('Session đã đóng hoặc bị huỷ, không thể đặt thêm món', 400);
         }
 
         return $this->addDishesToOrder($order, $guestId, $items, $orderHandlerId);
@@ -104,8 +104,8 @@ class OrderService
         }
 
         $order = $this->orderRepository->findByIdOrFailWithRelations($guest->order_id);
-        if ($order->status !== Order::STATUS_ACTIVE) {
-            throw new ServiceException('Bàn đã đóng, không thể gọi món', 400);
+        if (!in_array($order->status, [Order::STATUS_ACTIVE, Order::STATUS_PENDING_ARRIVAL])) {
+            throw new ServiceException('Bàn đã đóng hoặc bị huỷ, không thể gọi món', 400);
         }
 
         return $this->addDishesToOrder($order, $guestId, $items);
@@ -148,7 +148,7 @@ class OrderService
         if (!$guest || !$guest->order_id) return [];
 
         return $this->orderDetailRepository->getByOrderId($guest->order_id)
-            ->load(['dish', 'orderHandler', 'guest'])
+            ->load(['dish', 'orderHandler', 'guest', 'order'])
             ->toArray();
     }
 

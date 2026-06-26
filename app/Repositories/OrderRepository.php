@@ -50,18 +50,49 @@ class OrderRepository implements OrderRepositoryInterface
 
     public function getByFilters(?string $fromDate, ?string $toDate, array $relations = []): Collection
     {
-        $query = Order::query()->orderBy('created_at', 'desc');
+        $query = Order::query()
+            ->orderByRaw('CASE WHEN reservation_time IS NOT NULL THEN 0 ELSE 1 END')
+            ->orderByRaw('COALESCE(reservation_time, created_at) DESC');
 
         if ($relations !== []) {
             $query->with($relations);
         }
 
-        if (!empty($fromDate)) {
-            $query->where('created_at', '>=', \Carbon\Carbon::parse($fromDate));
-        }
-
-        if (!empty($toDate)) {
-            $query->where('created_at', '<=', \Carbon\Carbon::parse($toDate));
+        if (!empty($fromDate) && !empty($toDate)) {
+            $from = \Carbon\Carbon::parse($fromDate);
+            $to = \Carbon\Carbon::parse($toDate);
+            
+            $query->where(function ($q) use ($from, $to) {
+                $q->where(function ($subQ) use ($from, $to) {
+                    $subQ->whereNotNull('reservation_time')
+                         ->whereBetween('reservation_time', [$from, $to]);
+                })->orWhere(function ($subQ) use ($from, $to) {
+                    $subQ->whereNull('reservation_time')
+                         ->whereBetween('created_at', [$from, $to]);
+                });
+            });
+        } elseif (!empty($fromDate)) {
+            $from = \Carbon\Carbon::parse($fromDate);
+            $query->where(function ($q) use ($from) {
+                $q->where(function ($subQ) use ($from) {
+                    $subQ->whereNotNull('reservation_time')
+                         ->where('reservation_time', '>=', $from);
+                })->orWhere(function ($subQ) use ($from) {
+                    $subQ->whereNull('reservation_time')
+                         ->where('created_at', '>=', $from);
+                });
+            });
+        } elseif (!empty($toDate)) {
+            $to = \Carbon\Carbon::parse($toDate);
+            $query->where(function ($q) use ($to) {
+                $q->where(function ($subQ) use ($to) {
+                    $subQ->whereNotNull('reservation_time')
+                         ->where('reservation_time', '<=', $to);
+                })->orWhere(function ($subQ) use ($to) {
+                    $subQ->whereNull('reservation_time')
+                         ->where('created_at', '<=', $to);
+                });
+            });
         }
 
         return $query->get();
