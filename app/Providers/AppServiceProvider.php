@@ -18,10 +18,10 @@ use App\Repositories\Contracts\OrderDetailRepositoryInterface;
 use App\Repositories\Contracts\GuestRepositoryInterface;
 use App\Repositories\Contracts\OrderRepositoryInterface;
 use App\Repositories\Contracts\TableRepositoryInterface;
-use App\Services\Contracts\ImageStorageServiceInterface;
+use App\Patterns\Strategy\ImageStorage\ImageStorageStrategy;
 use App\Services\Contracts\MediaUploadServiceInterface;
 use App\Services\PendingImageWorkflowService;
-use App\Services\S3ImageStorageService;
+use App\Patterns\Strategy\ImageStorage\S3ImageStorageStrategy;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -39,7 +39,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(GuestRepositoryInterface::class, GuestRepository::class);
         $this->app->bind(OrderRepositoryInterface::class, OrderRepository::class);
         $this->app->bind(TableRepositoryInterface::class, TableRepository::class);
-        $this->app->bind(ImageStorageServiceInterface::class, S3ImageStorageService::class);
+        $this->app->bind(ImageStorageStrategy::class, S3ImageStorageStrategy::class);
         $this->app->bind(MediaUploadServiceInterface::class, PendingImageWorkflowService::class);
     }
 

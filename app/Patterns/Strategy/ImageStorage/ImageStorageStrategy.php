@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Services\Contracts;
+namespace App\Patterns\Strategy\ImageStorage;
 
 use Illuminate\Http\UploadedFile;
 
-interface ImageStorageServiceInterface
+interface ImageStorageStrategy
 {
     /**
      * @return array{key: string, url: string}

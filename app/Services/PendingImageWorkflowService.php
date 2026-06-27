@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\ServiceException;
-use App\Services\Contracts\ImageStorageServiceInterface;
+use App\Patterns\Strategy\ImageStorage\ImageStorageStrategy;
 use App\Services\Contracts\MediaUploadServiceInterface;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
@@ -13,7 +13,7 @@ use Throwable;
 class PendingImageWorkflowService implements MediaUploadServiceInterface
 {
     public function __construct(
-        private readonly ImageStorageServiceInterface $imageStorageService
+        private readonly ImageStorageStrategy $imageStorageStrategy
     ) {}
 
     /**
@@ -93,7 +93,7 @@ class PendingImageWorkflowService implements MediaUploadServiceInterface
     public function deleteImage(string $key, string $deleteErrorMessage): void
     {
         try {
-            $this->imageStorageService->deleteImage($key);
+            $this->imageStorageStrategy->deleteImage($key);
         } catch (Throwable $exception) {
             report($exception);
 
@@ -108,7 +108,7 @@ class PendingImageWorkflowService implements MediaUploadServiceInterface
         }
 
         try {
-            $this->imageStorageService->deleteImage($key);
+            $this->imageStorageStrategy->deleteImage($key);
         } catch (Throwable) {
             // Best-effort cleanup for failed update/rollback.
         }
@@ -119,7 +119,7 @@ class PendingImageWorkflowService implements MediaUploadServiceInterface
      */
     private function uploadPendingImageInternal(UploadedFile $file, string $scope, int $ownerId): array
     {
-        return $this->imageStorageService->uploadPublicImage(
+        return $this->imageStorageStrategy->uploadPublicImage(
             $file,
             $this->pendingDirectoryForOwner($scope, $ownerId)
         );
@@ -130,22 +130,22 @@ class PendingImageWorkflowService implements MediaUploadServiceInterface
      */
     private function finalizePendingImageInternal(string $pendingKey, string $scope, int $ownerId): array
     {
-        if (!$this->imageStorageService->exists($pendingKey)) {
+        if (!$this->imageStorageStrategy->exists($pendingKey)) {
             throw new InvalidArgumentException('Ảnh tạm không tồn tại hoặc đã hết hạn');
         }
 
         $finalKey = $this->buildFinalKey($pendingKey, $scope, $ownerId);
-        $this->imageStorageService->moveImage($pendingKey, $finalKey);
+        $this->imageStorageStrategy->moveImage($pendingKey, $finalKey);
 
         return [
             'key' => $finalKey,
-            'url' => $this->imageStorageService->url($finalKey),
+            'url' => $this->imageStorageStrategy->url($finalKey),
         ];
     }
 
     private function deletePendingImageInternal(string $pendingKey): void
     {
-        $this->imageStorageService->deleteImage($pendingKey);
+        $this->imageStorageStrategy->deleteImage($pendingKey);
     }
 
     private function validationException(string $fieldName, string $message): ServiceException

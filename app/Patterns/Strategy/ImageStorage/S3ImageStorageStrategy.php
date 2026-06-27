@@ -1,14 +1,13 @@
 <?php
 
-namespace App\Services;
+namespace App\Patterns\Strategy\ImageStorage;
 
-use App\Services\Contracts\ImageStorageServiceInterface;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 use RuntimeException;
 
-class S3ImageStorageService implements ImageStorageServiceInterface
+class S3ImageStorageStrategy implements ImageStorageStrategy
 {
     private const DISK = 's3';
 
