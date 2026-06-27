@@ -61,4 +61,15 @@ class Order extends Model
             default => throw new \Exception('Invalid order status: ' . $this->status),
         };
     }
+
+    /**
+     * Prepare a date for array / JSON serialization.
+     *
+     * @param  \DateTimeInterface  $date
+     * @return string
+     */
+    protected function serializeDate(\DateTimeInterface $date)
+    {
+        return $date->format('Y-m-d\TH:i:s');
+    }
 }

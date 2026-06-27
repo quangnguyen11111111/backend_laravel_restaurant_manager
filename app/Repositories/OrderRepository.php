@@ -59,8 +59,8 @@ class OrderRepository implements OrderRepositoryInterface
         }
 
         if (!empty($fromDate) && !empty($toDate)) {
-            $from = \Carbon\Carbon::parse($fromDate);
-            $to = \Carbon\Carbon::parse($toDate);
+            $from = \Carbon\Carbon::parse($fromDate)->setTimezone(config('app.timezone'));
+            $to = \Carbon\Carbon::parse($toDate)->setTimezone(config('app.timezone'));
             
             $query->where(function ($q) use ($from, $to) {
                 $q->where(function ($subQ) use ($from, $to) {
@@ -72,7 +72,7 @@ class OrderRepository implements OrderRepositoryInterface
                 });
             });
         } elseif (!empty($fromDate)) {
-            $from = \Carbon\Carbon::parse($fromDate);
+            $from = \Carbon\Carbon::parse($fromDate)->setTimezone(config('app.timezone'));
             $query->where(function ($q) use ($from) {
                 $q->where(function ($subQ) use ($from) {
                     $subQ->whereNotNull('reservation_time')
@@ -83,7 +83,7 @@ class OrderRepository implements OrderRepositoryInterface
                 });
             });
         } elseif (!empty($toDate)) {
-            $to = \Carbon\Carbon::parse($toDate);
+            $to = \Carbon\Carbon::parse($toDate)->setTimezone(config('app.timezone'));
             $query->where(function ($q) use ($to) {
                 $q->where(function ($subQ) use ($to) {
                     $subQ->whereNotNull('reservation_time')

@@ -50,27 +50,17 @@ class OrderService
             throw new ServiceException('Bàn này đang được sử dụng', 400);
         }
 
-        return DB::transaction(function () use ($tableNumber, $guestId, $guestCount, $table) {
-            $pin = strtoupper(Str::random(4)); // 4 character PIN
-            
-            $order = $this->orderRepository->create([
-                'table_number' => $tableNumber,
-                'guest_id' => $guestId,
-                'guest_count' => $guestCount,
-                'session_pin' => $pin,
-                'status' => Order::STATUS_ACTIVE,
-            ]);
+        $creator = new \App\Patterns\Factory\Order\WalkInOrderCreator(
+            $this->orderRepository,
+            $this->tableRepository,
+            $this->guestRepository
+        );
 
-            $this->tableRepository->update($table, ['status' => Table::STATUS_OCCUPIED]);
-
-            // Assign host guest to this order
-            $guest = $this->guestRepository->findById($guestId);
-            if ($guest) {
-                $this->guestRepository->update($guest, ['order_id' => $order->id]);
-            }
-
-            return $order;
-        });
+        return $creator->processOrder([
+            'table_number' => $tableNumber,
+            'guest_id' => $guestId,
+            'guest_count' => $guestCount
+        ]);
     }
 
     /**
