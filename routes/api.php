@@ -155,6 +155,8 @@ Route::prefix('guests')->group(function () {
     Route::middleware(['jwt.auth', 'role:Guest,Owner,Employee',])->group(function () {
         Route::post('/orders', [GuestController::class, 'createOrders']);
         Route::get('/orders', [GuestController::class, 'getOrders']);
+        Route::post('/orders/cancel', [GuestController::class, 'cancelOrders']);
+        Route::put('/orders/{orderDetailId}/cancel', [GuestController::class, 'cancelOrderDetail'])->whereNumber('orderDetailId');
     });
 });
 

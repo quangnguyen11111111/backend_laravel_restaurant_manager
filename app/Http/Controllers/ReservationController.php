@@ -34,7 +34,8 @@ class ReservationController extends Controller
     public function checkIn($orderId, Request $request): JsonResponse
     {
         $request->validate([
-            'table_number' => 'required|integer'
+            'table_number' => 'required|array',
+            'table_number.*' => 'integer'
         ]);
 
         try {

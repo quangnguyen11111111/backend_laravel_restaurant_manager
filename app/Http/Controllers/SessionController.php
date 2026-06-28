@@ -14,10 +14,12 @@ class SessionController extends Controller
 {
     public function __construct(private readonly OrderService $orderService) {}
 
+    // Host mở bàn
     public function hostOpen(Request $request): JsonResponse
     {
         $request->validate([
-            'table_number' => 'required|integer',
+            'table_number' => 'required|array',
+            'table_number.*' => 'integer',
             'guest_count' => 'nullable|integer|min:1',
         ]);
 
@@ -39,6 +41,7 @@ class SessionController extends Controller
         }
     }
 
+    // Guest tham gia bàn
     public function guestJoin(Request $request): JsonResponse
     {
         $request->validate([

@@ -53,9 +53,7 @@ class GuestController extends Controller
             $accessToken = $tokens['accessToken'];
             $refreshToken = $tokens['refreshToken'];
 
-            $activeOrder = \App\Models\Order::where('table_number', $validated['tableNumber'])
-                ->where('status', \App\Models\Order::STATUS_ACTIVE)
-                ->first();
+            $activeOrder = $this->orderService->getActiveOrderForTable($validated['tableNumber']);
 
             return response()->json([
                 'message' => 'Đăng nhập thành công',
@@ -159,6 +157,26 @@ class GuestController extends Controller
         $result = $this->orderService->guestGetOrders($guestId);
         return response()->json([
             'message' => 'Lấy danh sách đơn hàng thành công',
+            'data' => $result,
+        ]);
+    }
+
+    public function cancelOrders(Request $request): JsonResponse
+    {
+        $guestId = $request->user()->id;
+        $result = $this->orderService->guestCancelOrders($guestId);
+        return response()->json([
+            'message' => 'Huỷ đơn thành công',
+            'data' => $result,
+        ]);
+    }
+
+    public function cancelOrderDetail($orderDetailId, Request $request): JsonResponse
+    {
+        $guestId = $request->user()->id;
+        $result = $this->orderService->guestCancelOrderDetail($guestId, (int) $orderDetailId);
+        return response()->json([
+            'message' => 'Huỷ món ăn thành công',
             'data' => $result,
         ]);
     }

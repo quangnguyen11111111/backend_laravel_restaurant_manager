@@ -81,7 +81,6 @@ class GuestService
 
         $guest = $this->guestRepository->create([
             'name' => $validated['name'],
-            'table_number' => $validated['tableNumber'],
         ]);
 
         return [

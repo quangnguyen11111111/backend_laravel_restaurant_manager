@@ -47,8 +47,8 @@ class ReservationService
 
         return DB::transaction(function () use ($orderId, $tableNumbers) {
             $order = $this->orderRepository->findByIdOrFailWithRelations($orderId);
-            if ($order->status !== Order::STATUS_PENDING_ARRIVAL) {
-                throw new ServiceException('Reservation không hợp lệ để check-in', 400);
+            if ($order->status !== Order::STATUS_PENDING_ARRIVAL && $order->status !== Order::STATUS_PENDING) {
+                throw new ServiceException('Đơn hàng không hợp lệ để nhận bàn', 400);
             }
 
             $tables = $this->tableRepository->getByIds($tableNumbers);
