@@ -46,6 +46,11 @@ class Order extends Model
         return $this->belongsTo(Table::class, 'table_number', 'number');
     }
 
+    public function tables()
+    {
+        return $this->belongsToMany(Table::class, 'order_tables', 'order_id', 'table_number')->withTimestamps();
+    }
+
     public function orderDetails()
     {
         return $this->hasMany(OrderDetail::class);

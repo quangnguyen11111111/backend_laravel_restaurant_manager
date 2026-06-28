@@ -20,6 +20,11 @@ class TableRepository implements TableRepositoryInterface
         return Table::query()->where('number', $number)->first();
     }
 
+    public function getByIds(array $numbers): Collection
+    {
+        return Table::query()->whereIn('number', $numbers)->get();
+    }
+
     public function create(array $attributes): Table
     {
         return Table::query()->create($attributes);

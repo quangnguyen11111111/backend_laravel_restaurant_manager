@@ -69,6 +69,9 @@ class TableService
         $attributes = [
             'number' => $number,
             'capacity' => (int) $validated['capacity'],
+            'max_capacity' => isset($validated['max_capacity']) ? (int) $validated['max_capacity'] : (int) $validated['capacity'] + 1,
+            'group_id' => $validated['group_id'] ?? null,
+            'group_order' => isset($validated['group_order']) ? (int) $validated['group_order'] : null,
             'token' => $this->generateToken(),
         ];
 
@@ -165,6 +168,18 @@ class TableService
             'capacity' => (int) $validated['capacity'],
         ];
 
+        if (isset($validated['max_capacity'])) {
+            $attributes['max_capacity'] = (int) $validated['max_capacity'];
+        }
+
+        if (array_key_exists('group_id', $validated)) {
+            $attributes['group_id'] = $validated['group_id'];
+        }
+
+        if (array_key_exists('group_order', $validated)) {
+            $attributes['group_order'] = $validated['group_order'] ? (int) $validated['group_order'] : null;
+        }
+
         if (array_key_exists('status', $validated) && !empty($validated['status'])) {
             $attributes['status'] = $validated['status'];
         }
@@ -184,6 +199,9 @@ class TableService
         return [
             'number' => $table->number,
             'capacity' => $table->capacity,
+            'max_capacity' => $table->max_capacity,
+            'group_id' => $table->group_id,
+            'group_order' => $table->group_order,
             'status' => $table->status,
             'token' => $table->token,
             'createdAt' => $table->created_at,

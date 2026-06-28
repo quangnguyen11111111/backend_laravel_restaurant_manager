@@ -47,7 +47,12 @@ class GuestRepository implements GuestRepositoryInterface
     public function clearRefreshTokensByTableNumber(int $tableNumber): int
     {
         return Guest::query()
-            ->where('table_number', $tableNumber)
+            ->whereHas('order', function ($query) use ($tableNumber) {
+                $query->where('table_number', $tableNumber)
+                      ->orWhereHas('tables', function ($q) use ($tableNumber) {
+                          $q->where('tables.number', $tableNumber);
+                      });
+            })
             ->update([
                 'refresh_token' => null,
                 'refresh_token_expires_at' => null,

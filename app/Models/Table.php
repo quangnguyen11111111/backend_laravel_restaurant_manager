@@ -15,6 +15,9 @@ class Table extends Model
     protected $fillable = [
         'number',
         'capacity',
+        'group_id',
+        'group_order',
+        'max_capacity',
         'status',
         'token',
     ];
@@ -41,6 +44,8 @@ class Table extends Model
      */
     public function orders()
     {
-        return $this->hasMany(Order::class, 'table_number', 'number');
+        // Old relation: return $this->hasMany(Order::class, 'table_number', 'number');
+        // New relation: BelongsToMany
+        return $this->belongsToMany(Order::class, 'order_tables', 'table_number', 'order_id')->withTimestamps();
     }
 }

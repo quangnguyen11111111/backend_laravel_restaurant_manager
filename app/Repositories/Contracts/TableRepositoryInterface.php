@@ -10,6 +10,7 @@ interface TableRepositoryInterface
     public function getAllOrderByCreatedAtDesc(): Collection;
 
     public function findByNumber(int $number): ?Table;
+    public function getByIds(array $numbers): Collection;
 
     public function create(array $attributes): Table;
 

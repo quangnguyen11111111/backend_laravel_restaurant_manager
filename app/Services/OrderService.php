@@ -30,7 +30,12 @@ class OrderService
      */
     public function getActiveOrderForTable(int $tableNumber): ?Order
     {
-        return Order::where('table_number', $tableNumber)
+        return Order::where(function($query) use ($tableNumber) {
+                $query->where('table_number', $tableNumber)
+                      ->orWhereHas('tables', function($q) use ($tableNumber) {
+                          $q->where('tables.number', $tableNumber);
+                      });
+            })
             ->where('status', Order::STATUS_ACTIVE)
             ->first();
     }
@@ -56,11 +61,15 @@ class OrderService
             $this->guestRepository
         );
 
-        return $creator->processOrder([
+        $order = $creator->processOrder([
             'table_number' => $tableNumber,
             'guest_id' => $guestId,
             'guest_count' => $guestCount
         ]);
+        
+        $order->tables()->sync([$tableNumber]);
+        
+        return $order;
     }
 
     /**
@@ -211,8 +220,13 @@ class OrderService
                 'status' => $order->status,
             ]);
 
-            if ($order->table) {
-                $this->tableRepository->update($order->table, ['status' => Table::STATUS_AVAILABLE]);
+            if ($order->table_number || $order->tables->isNotEmpty()) {
+                if ($order->table) {
+                    $this->tableRepository->update($order->table, ['status' => Table::STATUS_AVAILABLE]);
+                }
+                foreach ($order->tables as $t) {
+                    $this->tableRepository->update($t, ['status' => Table::STATUS_AVAILABLE]);
+                }
             }
         });
 
