@@ -4,10 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Patterns\State\OrderDetail\OrderDetailState;
+use App\Patterns\State\OrderDetail\OrderDetailContext;
+use App\Patterns\Observer\Contracts\Subject;
+use App\Patterns\Observer\Traits\Observable;
 
-class OrderDetail extends Model
+class OrderDetail extends Model implements Subject
 {
-    use HasFactory;
+    use HasFactory, Observable;
 
     public const STATUS_PENDING = 'Pending';
     public const STATUS_PROCESSING = 'Processing';

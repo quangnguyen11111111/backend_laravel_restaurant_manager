@@ -4,10 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Patterns\State\Order\OrderState;
+use App\Patterns\Observer\Contracts\Subject;
+use App\Patterns\Observer\Traits\Observable;
 
-class Order extends Model
+class Order extends Model implements Subject
 {
-    use HasFactory;
+    use HasFactory, Observable;
 
     public const STATUS_PENDING_ARRIVAL = 'Pending_Arrival';
     public const STATUS_ACTIVE = 'Active';

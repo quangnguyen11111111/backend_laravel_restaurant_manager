@@ -19,6 +19,7 @@ class SocketService
 {
     /**
      * Upsert socket connection
+     * Hàm dùng để lưu socket id của user vào database
      * 
      * @param string $socketId - Socket ID từ WebSocket server
      * @param string $userId - User ID từ JWT token
@@ -123,6 +124,7 @@ class SocketService
 
     /**
      * Lấy user info từ socket ID
+     * Hàm dùng để lấy thông tin user từ socket id khi user kết nối
      * 
      * @param string $socketId
      * @return array|null
@@ -152,5 +154,37 @@ class SocketService
         }
 
         return null;
+    }
+
+    /**
+     * Gửi sự kiện tới Socket Server (Node.js) qua HTTP POST
+     * 
+     * @param string $event Tên event
+     * @param mixed $payload Dữ liệu gửi đi
+     * @param string|null $room Tên room (ví dụ: 'manager-room')
+     * @param string|null $socketId Socket ID cụ thể
+     * @return bool
+     */
+    public function emit(string $event, $payload, ?string $room = null, ?string $socketId = null): bool
+    {
+        try {
+            // Có thể lấy URL từ .env.socket hoặc .env, mặc định là http://localhost:3001
+            $socketUrl = env('SOCKET_SERVER_URL', 'http://localhost:3001') . '/emit';
+            
+            $response = \Illuminate\Support\Facades\Http::post($socketUrl, [
+                'event' => $event,
+                'payload' => $payload,
+                'room' => $room,
+                'socketId' => $socketId,
+            ]);
+
+            return $response->successful();
+        } catch (\Exception $e) {
+            Log::error('SocketService::emit failed', [
+                'event' => $event,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
     }
 }

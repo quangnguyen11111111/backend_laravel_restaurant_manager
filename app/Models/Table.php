@@ -4,10 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use App\Patterns\Observer\Contracts\Subject;
+use App\Patterns\Observer\Traits\Observable;
 
-class Table extends Model
+class Table extends Model implements Subject
 {
-    use HasFactory;
+    use HasFactory, Observable;
 
     protected $primaryKey = 'number';
     public $incrementing = false;

@@ -2,6 +2,12 @@
 
 namespace App\Providers;
 
+use App\Models\OrderDetail;
+use App\Models\Table;
+use App\Models\Order;
+use App\Patterns\Observer\OrderDetailObserver;
+use App\Patterns\Observer\TableObserver;
+use App\Patterns\Observer\OrderObserver;
 use App\Repositories\AuthRepository;
 use App\Repositories\AccountRepository;
 use App\Repositories\CategoryRepository;
@@ -48,6 +54,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        OrderDetail::attachGlobal(app(OrderDetailObserver::class));
+        Table::attachGlobal(app(TableObserver::class));
+        Order::attachGlobal(app(OrderObserver::class));
     }
 }

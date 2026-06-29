@@ -15,6 +15,7 @@
 import { Server } from "socket.io";
 import axios from "axios";
 import dotenv from "dotenv";
+import http from "http";
 
 dotenv.config();
 
@@ -24,8 +25,54 @@ const LARAVEL_API_URL =
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 const MANAGER_ROOM = "manager-room";
 
-// Khởi tạo Socket.io server với cấu hình CORS đúng
-const io = new Server(PORT, {
+// Khởi tạo HTTP server
+const httpServer = http.createServer((req, res) => {
+    // Basic CORS for Laravel backend
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    if (req.method === 'OPTIONS') {
+        res.writeHead(204);
+        res.end();
+        return;
+    }
+
+    if (req.method === 'POST' && req.url === '/emit') {
+        let body = '';
+        req.on('data', chunk => {
+            body += chunk.toString();
+        });
+        req.on('end', () => {
+            try {
+                const data = JSON.parse(body);
+                const { event, payload, room, socketId } = data;
+
+                if (socketId) {
+                    io.to(socketId).emit(event, payload);
+                } else if (room) {
+                    io.to(room).emit(event, payload);
+                } else {
+                    io.emit(event, payload);
+                }
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true, message: 'Event emitted' }));
+            } catch (err) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, error: 'Invalid JSON payload' }));
+            }
+        });
+        return;
+    }
+
+    // Default response
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Not Found');
+});
+
+// Khởi tạo Socket.io server bọc ngoài httpServer
+const io = new Server(httpServer, {
     cors: {
         origin: FRONTEND_URL,
         methods: ["GET", "POST"],
@@ -284,5 +331,7 @@ io.on("ping", (callback) => {
     callback();
 });
 
-console.log(`🚀 Socket server running on port ${PORT}`);
-console.log(`📡 Connected to Laravel API: ${LARAVEL_API_URL}`);
+httpServer.listen(PORT, () => {
+    console.log(`🚀 Socket server & HTTP API running on port ${PORT}`);
+    console.log(`📡 Connected to Laravel API: ${LARAVEL_API_URL}`);
+});
