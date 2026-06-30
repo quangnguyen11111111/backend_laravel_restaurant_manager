@@ -33,5 +33,10 @@ class DatabaseSeeder extends Seeder
         } else {
             $this->command->info('Đã có tài khoản trong database, bỏ qua việc tạo tài khoản Owner.');
         }
+
+        // Chạy seeder nạp dữ liệu món ăn mẫu
+        $this->call([
+            FoodSeeder::class,
+        ]);
     }
 }

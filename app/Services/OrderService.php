@@ -280,7 +280,7 @@ class OrderService
     public function updateSession(int $orderId, string $status)
     {
         return DB::transaction(function () use ($orderId, $status) {
-            $order = $this->orderRepository->findById($orderId);
+            $order = $this->orderRepository->findByIdWithRelations($orderId);
             if (!$order) throw new ServiceException('Đơn hàng không tồn tại', 404);
 
             if ($status !== $order->status) {

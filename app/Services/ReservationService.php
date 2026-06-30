@@ -163,6 +163,12 @@ class ReservationService
     public function getCapacity(int $guestCount, string $targetTime)
     {
         $time = Carbon::parse($targetTime);
+        
+        $timeString = $time->format('H:i');
+        if ($timeString < '09:00' || $timeString > '21:00') {
+            throw new ServiceException('Chỉ có thể đặt bàn trong khung giờ từ 09:00 đến 21:00', 400);
+        }
+
         $startWindow = $time->copy()->subHours(2);
         $endWindow = $time->copy()->addHours(2);
 
