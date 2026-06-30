@@ -280,7 +280,7 @@ class OrderService
     public function updateSession(int $orderId, string $status)
     {
         return DB::transaction(function () use ($orderId, $status) {
-            $order = $this->orderRepository->findByIdWithRelations($orderId);
+            $order = $this->orderRepository->findByIdWithRelations($orderId, ['tables', 'table', 'orderDetails']);
             if (!$order) throw new ServiceException('Đơn hàng không tồn tại', 404);
 
             if ($status !== $order->status) {
@@ -288,6 +288,28 @@ class OrderService
             }
             
             $this->orderRepository->update($order, ['status' => $order->status]);
+
+            // Nếu đơn hàng bị huỷ, giải phóng bàn và huỷ các món ăn
+            if ($order->status === Order::STATUS_CANCELLED) {
+                if ($order->table_number || $order->tables->isNotEmpty()) {
+                    if ($order->table) {
+                        $this->tableRepository->update($order->table, ['status' => Table::STATUS_AVAILABLE]);
+                    }
+                    foreach ($order->tables as $t) {
+                        $this->tableRepository->update($t, ['status' => Table::STATUS_AVAILABLE]);
+                    }
+                }
+
+                foreach ($order->orderDetails as $detail) {
+                    if ($detail->status !== OrderDetail::STATUS_CANCELLED) {
+                        $detail->state()->transitionTo(OrderDetail::STATUS_CANCELLED, $detail);
+                        $this->orderDetailRepository->update($detail, [
+                            'status' => OrderDetail::STATUS_CANCELLED
+                        ]);
+                    }
+                }
+            }
+
             return $order->load(['orderDetails.dish', 'orderDetails.guest', 'guest', 'table']);
         });
     }
