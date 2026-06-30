@@ -106,7 +106,7 @@ Route::prefix('dishes')->group(function () {
 });
 
 // Admin routes - Yêu cầu quyền Owner
-Route::prefix('admin/dishes')->middleware(['jwt.auth', 'role:Owner'])->group(function () {
+Route::prefix('admin/dishes')->middleware(['jwt.auth', 'role:Owner,Employee'])->group(function () {
     // Lấy danh sách tất cả dishes (admin)
     Route::get('/', [DishController::class, 'indexForAdmin']);
     // Upload ảnh

@@ -25,18 +25,20 @@ class ReservationService
 
     public function createReservation(array $data)
     {
-        $capacity = $this->getCapacity($data['guest_count'], $data['reservation_time']);
-        if ($capacity['available_count'] === 0) {
-            throw new ServiceException('Không có bàn trống phù hợp vào thời gian này', 400);
-        }
+        return DB::transaction(function () use ($data) {
+            $capacity = $this->getCapacity($data['guest_count'], $data['reservation_time'], true);
+            if ($capacity['available_count'] === 0) {
+                throw new ServiceException('Không có bàn trống phù hợp vào thời gian này', 400);
+            }
 
-        $creator = new \App\Patterns\Factory\Order\ReservationOrderCreator(
-            $this->orderRepository,
-            $this->guestRepository,
-            $this->guestService
-        );
+            $creator = new \App\Patterns\Factory\Order\ReservationOrderCreator(
+                $this->orderRepository,
+                $this->guestRepository,
+                $this->guestService
+            );
 
-        return $creator->processOrder($data);
+            return $creator->processOrder($data);
+        });
     }
 
     public function checkInReservation(int $orderId, $tableNumbers)
@@ -160,7 +162,7 @@ class ReservationService
         return null;
     }
 
-    public function getCapacity(int $guestCount, string $targetTime)
+    public function getCapacity(int $guestCount, string $targetTime, bool $lock = false)
     {
         $time = Carbon::parse($targetTime);
         
@@ -173,12 +175,15 @@ class ReservationService
         $endWindow = $time->copy()->addHours(2);
 
         // 1. Get all visible tables
-        $tables = Table::where('status', '!=', Table::STATUS_HIDDEN)->get();
+        $tablesQuery = Table::where('status', '!=', Table::STATUS_HIDDEN);
+        if ($lock) $tablesQuery->lockForUpdate();
+        $tables = $tablesQuery->get();
 
         // 2. Find ACTIVE orders that conflict
-        $activeOrders = Order::with('tables')->where('status', Order::STATUS_ACTIVE)
-            ->where('updated_at', '>', $time->copy()->subHours(4))
-            ->get();
+        $activeOrdersQuery = Order::with('tables')->where('status', Order::STATUS_ACTIVE)
+            ->where('updated_at', '>', $time->copy()->subHours(4));
+        if ($lock) $activeOrdersQuery->lockForUpdate();
+        $activeOrders = $activeOrdersQuery->get();
         
         $occupiedTableNumbers = collect();
         foreach ($activeOrders as $order) {
@@ -190,10 +195,11 @@ class ReservationService
         $occupiedTableNumbers = $occupiedTableNumbers->unique()->toArray();
 
         // 3. Find PENDING reservations that conflict
-        $pendingReservations = Order::where('status', Order::STATUS_PENDING_ARRIVAL)
+        $pendingReservationsQuery = Order::where('status', Order::STATUS_PENDING_ARRIVAL)
             ->whereBetween('reservation_time', [$startWindow, $endWindow])
-            ->orderBy('guest_count', 'desc')
-            ->get();
+            ->orderBy('guest_count', 'desc');
+        if ($lock) $pendingReservationsQuery->lockForUpdate();
+        $pendingReservations = $pendingReservationsQuery->get();
 
         // 4. Simulate free tables
         $freeTables = $tables->filter(function($table) use ($occupiedTableNumbers) {
