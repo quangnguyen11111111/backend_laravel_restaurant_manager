@@ -167,6 +167,8 @@ Route::prefix('guests')->group(function () {
 | Prefix: /orders (giữ nguyên đường dẫn từ Node.js)
 */
 Route::prefix('orders')->middleware(['jwt.auth', 'role:Owner,Employee'])->group(function () {
+    Route::get('/kitchen/consolidated', [\App\Http\Controllers\KitchenController::class, 'getConsolidatedOrders']);
+    Route::put('/kitchen/{orderDetailId}/status', [\App\Http\Controllers\KitchenController::class, 'markAsDone'])->whereNumber('orderDetailId');
     Route::post('/', [OrderController::class, 'store']);
     Route::get('/', [OrderController::class, 'index']);
     Route::get('/{orderId}', [OrderController::class, 'show'])->whereNumber('orderId');
