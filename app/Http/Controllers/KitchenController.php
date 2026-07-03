@@ -26,6 +26,8 @@ class KitchenController extends Controller
             $dishName = $details->first()->dish_name ?? ($details->first()->dish->name ?? 'Unknown');
             $dishImage = $details->first()->dish_image ?? ($details->first()->dish->image ?? '');
             $totalQuantity = $details->sum('quantity');
+            $pendingQuantity = $details->where('status', OrderDetail::STATUS_PENDING)->sum('quantity');
+            $processingQuantity = $details->where('status', OrderDetail::STATUS_PROCESSING)->sum('quantity');
 
             // Sắp xếp các order detail theo thời gian order (created_at của order)
             $waitingList = $details->map(function ($detail) {
@@ -44,6 +46,8 @@ class KitchenController extends Controller
                 'dish_name' => $dishName,
                 'dish_image' => $dishImage,
                 'total_quantity' => $totalQuantity,
+                'pending_quantity' => $pendingQuantity,
+                'processing_quantity' => $processingQuantity,
                 'waiting_list' => $waitingList,
             ];
         }
@@ -65,13 +69,76 @@ class KitchenController extends Controller
             $orderDetail = OrderDetail::findOrFail($orderDetailId);
             
             // Theo yêu cầu mới, trạng thái chuyển thẳng thành Delivered (Đã giao)
-            $orderDetail->state()->transitionTo(OrderDetail::STATUS_DELIVERED);
+            $orderDetail->state()->transitionTo(OrderDetail::STATUS_DELIVERED, $orderDetail);
+            $orderDetail->save();
 
             DB::commit();
 
             return response()->json([
                 'message' => 'Đã đánh dấu hoàn thành',
                 'data' => $orderDetail
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Lỗi khi cập nhật trạng thái',
+                'error' => $e->getMessage()
+            ], 400);
+        }
+    }
+
+    /**
+     * Đánh dấu món đang được chế biến.
+     */
+    public function markAsProcessing($orderDetailId)
+    {
+        try {
+            DB::beginTransaction();
+
+            $orderDetail = OrderDetail::findOrFail($orderDetailId);
+            
+            $orderDetail->state()->transitionTo(OrderDetail::STATUS_PROCESSING, $orderDetail);
+            $orderDetail->save();
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Đã đánh dấu đang nấu',
+                'data' => $orderDetail
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Lỗi khi cập nhật trạng thái',
+                'error' => $e->getMessage()
+            ], 400);
+        }
+    }
+
+    /**
+     * Đánh dấu tất cả các suất ăn (Pending) của 1 món đang được chế biến.
+     */
+    public function markAllAsProcessing($dishId)
+    {
+        try {
+            DB::beginTransaction();
+
+            $orderDetails = OrderDetail::where('dish_id', $dishId)
+                ->where('status', OrderDetail::STATUS_PENDING)
+                ->get();
+            
+            $updatedCount = 0;
+            foreach ($orderDetails as $orderDetail) {
+                $orderDetail->state()->transitionTo(OrderDetail::STATUS_PROCESSING, $orderDetail);
+                $orderDetail->save();
+                $updatedCount++;
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => "Đã đánh dấu đang nấu cho $updatedCount suất ăn",
+                'updated_count' => $updatedCount
             ]);
         } catch (\Exception $e) {
             DB::rollBack();

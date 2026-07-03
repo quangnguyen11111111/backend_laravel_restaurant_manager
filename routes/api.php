@@ -169,6 +169,8 @@ Route::prefix('guests')->group(function () {
 Route::prefix('orders')->middleware(['jwt.auth', 'role:Owner,Employee'])->group(function () {
     Route::get('/kitchen/consolidated', [\App\Http\Controllers\KitchenController::class, 'getConsolidatedOrders']);
     Route::put('/kitchen/{orderDetailId}/status', [\App\Http\Controllers\KitchenController::class, 'markAsDone'])->whereNumber('orderDetailId');
+    Route::put('/kitchen/{orderDetailId}/processing', [\App\Http\Controllers\KitchenController::class, 'markAsProcessing'])->whereNumber('orderDetailId');
+    Route::put('/kitchen/dish/{dishId}/processing', [\App\Http\Controllers\KitchenController::class, 'markAllAsProcessing'])->whereNumber('dishId');
     Route::post('/', [OrderController::class, 'store']);
     Route::get('/', [OrderController::class, 'index']);
     Route::get('/{orderId}', [OrderController::class, 'show'])->whereNumber('orderId');

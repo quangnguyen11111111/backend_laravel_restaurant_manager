@@ -11,6 +11,8 @@ class PendingDetailState implements OrderDetailState
     {
         if ($status === OrderDetail::STATUS_PROCESSING) {
             $detail->status = OrderDetail::STATUS_PROCESSING;
+        } elseif ($status === OrderDetail::STATUS_DELIVERED) {
+            $detail->status = OrderDetail::STATUS_DELIVERED;
         } elseif ($status === OrderDetail::STATUS_CANCELLED) {
             $detail->status = OrderDetail::STATUS_CANCELLED;
         } else {
