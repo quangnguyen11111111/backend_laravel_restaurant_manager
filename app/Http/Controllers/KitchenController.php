@@ -33,7 +33,7 @@ class KitchenController extends Controller
             $waitingList = $details->map(function ($detail) {
                 return [
                     'order_detail_id' => $detail->id,
-                    'table_number' => $detail->order->table_number ?? 'Mang đi',
+                    'table_number' => $detail->order->table_number ?? 'Chuẩn bị món trước',
                     'quantity' => $detail->quantity,
                     'ordered_at' => $detail->order->created_at,
                     'note' => $detail->note,
