@@ -1,12 +1,3 @@
-# Backend Laravel Restaurant Manager
-
-## Mục tiêu tái cấu trúc
-
-Code được tái cấu trúc để:
-
-- Giảm kiến trúc controller-heavy.
-- Tách rõ business logic, data access logic, và HTTP layer.
-- Tăng khả năng mở rộng, test, và bảo trì.
 
 ## Design Pattern đã áp dụng
 
